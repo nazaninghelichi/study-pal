@@ -13,7 +13,7 @@ ASK_USERNAME = range(1)
 # === DB INIT ===
 def init_buddy_system_table():
     try:
-        conn = sqlite3.connect("jobpal.db")
+        conn = sqlite3.connect("studypal.db")
         c = conn.cursor()
         c.execute("""
             CREATE TABLE IF NOT EXISTS buddies (
@@ -38,7 +38,7 @@ def receive_username(update: Update, context: CallbackContext):
     username = update.message.text.strip().lstrip("@")
 
     try:
-        conn = sqlite3.connect("jobpal.db")
+        conn = sqlite3.connect("studypal.db")
         c = conn.cursor()
         c.execute("""
             INSERT OR REPLACE INTO buddies (user_id, buddy_username)
@@ -63,7 +63,7 @@ def cancel(update: Update, context: CallbackContext):
 def my_buddy(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     try:
-        conn = sqlite3.connect("jobpal.db")
+        conn = sqlite3.connect("studypal.db")
         c = conn.cursor()
         c.execute("SELECT buddy_username FROM buddies WHERE user_id = ?", (user_id,))
         row = c.fetchone()
@@ -81,7 +81,7 @@ def my_buddy(update: Update, context: CallbackContext):
 def unbuddy(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     try:
-        conn = sqlite3.connect("jobpal.db")
+        conn = sqlite3.connect("studypal.db")
         c = conn.cursor()
         c.execute("DELETE FROM buddies WHERE user_id = ?", (user_id,))
         conn.commit()
