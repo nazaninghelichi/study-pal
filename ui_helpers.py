@@ -4,7 +4,7 @@ MAIN_MENU_CALLBACK_PREFIX = "main_menu_"
 
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("✍️ Log Apps", callback_data=f"{MAIN_MENU_CALLBACK_PREFIX}logjobs"),
+        [InlineKeyboardButton("✍️ Log Studies", callback_data=f"{MAIN_MENU_CALLBACK_PREFIX}logjobs"),
          InlineKeyboardButton("🎯 Set Goal", callback_data=f"{MAIN_MENU_CALLBACK_PREFIX}setgoal")],
         [InlineKeyboardButton("📊 View Progress", callback_data=f"{MAIN_MENU_CALLBACK_PREFIX}progress"),
          InlineKeyboardButton("🏆 Today's Board", callback_data=f"{MAIN_MENU_CALLBACK_PREFIX}leaderboard_today")],
