@@ -15,7 +15,7 @@ def coachsummary(update: Update, context: CallbackContext):
     weekday_map = {d.strftime("%A"): d.strftime("%Y-%m-%d") for d in this_week}
 
     try:
-        conn = sqlite3.connect("jobpal.db")
+        conn = sqlite3.connect("studypal.db")
         c = conn.cursor()
         c.execute("SELECT weekday, goal_count FROM user_goals WHERE user_id = ?", (user_id,))
         goals = dict(c.fetchall())
@@ -43,7 +43,7 @@ def coachsummary(update: Update, context: CallbackContext):
     ])
 
     coach_prompt = f"""
-You are a cold and realistic career coach.
+You are a cold and realistic study coach.
 The user has job search goals and progress stats.
 Give blunt feedback and estimate how long it may take to land interviews at this rate.
 No fluff. Speak like a coach who cares more about results than feelings.
@@ -75,7 +75,7 @@ def get_llm_feedback(prompt: str) -> str:
     data = {
         "model": "mistralai/mistral-7b-instruct",
         "messages": [
-            {"role": "system", "content": "You are a tough love career coach."},
+            {"role": "system", "content": "You are a tough love study coach."},
             {"role": "user", "content": prompt.strip()}
         ]
     }
