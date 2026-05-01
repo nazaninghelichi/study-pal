@@ -19,7 +19,7 @@ from telegram.ext import (
 
 from goal_command import (
     get_setgoal_handler,
-    get_logjobs_handler,
+    get_logstudies_handler,
     progress
 )
 from username_command import get_setname_handler
@@ -74,16 +74,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tip = "\n\n\u26a0\ufe0f _Tip: Set your daily goal using_ `/setgoal` _to unlock full tracking._"
 
     main_kb = ReplyKeyboardMarkup([
-        ['/logjobs', '/setgoal'],
+        ['/logstudies', '/setgoal'],
         ['/leaderboard', '/progress'],
         ['/settings']
     ], resize_keyboard=True)
 
     await update.message.reply_text(
         f"\ud83d\udc4b Welcome back, {display_name}!\n\nHere\u2019s what you can do:\n"
-        "\u2022 `/logjobs` — Log your applications\n"
+        "\u2022 `/logstudies` — Log your applications\n"
         "\u2022 `/setgoal` — Set or change your daily goal\n"
-        "\u2022 `/leaderboard` — See today’s top applicants\n"
+        "\u2022 `/leaderboard` — See today’s top studiers\n"
         "\u2022 `/progress` — See your weekly progress\n"
         "\u2022 `/settings` — Configure name, reminders, and more" + tip,
         reply_markup=main_kb,
@@ -101,7 +101,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "\ud83d\udcac *About This Bot*\n\n"
-        "I’m also job hunting right now, so I understand how frustrating it can feel.\n\n"
+        "I’m also studying hard right now, so I understand how frustrating it can feel.\n\n"
         "This bot helps us track progress and stay consistent — in a fun, supportive way.\n\n"
         "Wishing *you* (and *me*) the best of luck! \ud83c\udf40\n\n"
         "\ud83d\udce9 Feedback: calpal.agent@gmail.com",
@@ -186,7 +186,7 @@ async def testdb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === Bot Setup and Run ===
 if __name__ == "__main__":
-    logger.info("\ud83d\udd25 Running JobPal…")
+    logger.info("\ud83d\udd25 Running Study-Pal…")
     asyncio.get_event_loop().run_until_complete(init_db_pg())
 
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("wrapup", wrapup_command))
     app.add_handler(CommandHandler("testdb", testdb))
     app.add_handler(get_setgoal_handler())
-    app.add_handler(get_logjobs_handler())
+    app.add_handler(get_logstudies_handler())
     app.add_handler(get_setname_handler())
     app.add_handler(CallbackQueryHandler(start, pattern="^cancel$"))
 
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     scheduler.add_job(lambda: asyncio.create_task(run_daily_wrapup()), trigger="cron", hour=22, minute=0)
     scheduler.start()
 
-    logger.info("\ud83e\udd16 JobPal is live! Press Ctrl+C to stop.")
+    logger.info("\ud83e\udd16 Study-Pal is live! Press Ctrl+C to stop.")
     app.run_polling(drop_pending_updates=True)
 
     # Fake user seed
