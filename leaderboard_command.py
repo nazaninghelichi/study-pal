@@ -33,9 +33,9 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Build response text
     if not rows:
-        text = "📋 No one has logged jobs today yet."
+        text = "📋 No one has logged study sessions today yet."
     else:
-        text_lines = [f"🏆 *Today's Top Applicants ({today_str}):*", ""]
+        text_lines = [f"🏆 *Today's Top Studiers ({today_str}):*", ""]
         for rank, row in enumerate(rows, start=1):
             medal = {1: '🥇', 2: '🥈', 3: '🥉'}.get(rank, f"{rank}.")
             text_lines.append(f"{medal} *{row['display_name']}* — {row['done']} logged")
