@@ -1,55 +1,51 @@
-# 💼 JobPal Bot
+# 📚 Study-Pal
 
-**JobPal** is a motivational Telegram bot designed to help job seekers stay consistent, focused, and encouraged during their job hunt.
+**Study-Pal** is an AI-powered accountability bot that helps students stay consistent with their daily study goals — built for math students who need structure, motivation, and a little fun to keep showing up every day.
 
 ---
 
 ## 🚀 What it does
 
-- 🎯 Set daily job application goals  
-- ✍️ Log every job you apply to  
-- 📊 Track your daily and weekly progress  
-- 🤖 Get AI-powered motivation and feedback  
-- 🏆 Earn badges and get on the leaderboard  
-- 🤝 Add an accountability buddy
+- 🎯 Set a daily goal for how many math questions you want to complete
+- ✍️ Log your progress throughout the day
+- 📊 Track your daily and weekly consistency
+- 🤖 Get AI-powered motivation and personalized feedback
+- 🏆 Earn badges and climb the leaderboard
+- 😺 Receive cat gif rewards on great days — gentle nudges on missed ones
+- 🤝 Add an accountability buddy to stay on track together
 
 ---
 
-## 🧠 Why we built it
+## 🧠 Why it exists
 
-Job hunting can be isolating and exhausting. JobPal brings structure, community, and a little bit of fun to the process.
+Studying alone is hard. There is no one checking in, no structure, and no reward for showing up. Study-Pal fixes that by turning daily study habits into a game with real stakes — your streak, your rank, and your cat gifs on the line.
 
 ---
 
 ## 💬 How to use it
 
 1. Start the bot with `/start`
-2. Choose a cool username (no real names 😉)
-3. Set your daily goals with `/setgoal`
-4. Log your applications with `/logjobs`
-5. View your progress with `/progress`
-6. Connect with a buddy using `/mybuddy`
-7. Check the leaderboard with `/leaderboard`
-8. Explore AI help with `/ask`
+2. Pick a username
+3. Set your daily question goal with `/setgoal`
+4. Log completed questions with `/log`
+5. Check your progress with `/progress`
+6. View the leaderboard with `/leaderboard`
+7. Connect with a study buddy using `/mybuddy`
+8. Ask the AI coach anything with `/ask`
 
 ---
 
 ## ⚙️ Tech Stack
 
-- Python 3.12  
-- `python-telegram-bot`  
-- SQLite for local data  
-- APScheduler for reminders  
-- OpenRouter (LLM API) for Coach AI
-
----
-
-## 🛡️ Private project
-
-This is a private repo while in development. Will open-source it when ready.
+- Python 3.12
+- `python-telegram-bot`
+- SQLite for local data
+- APScheduler for daily reminders and end-of-day check-ins
+- OpenRouter (LLM API) for the AI coach
 
 ---
 
 ## 👩‍💻 Made by
 
 [@nazaninghelichi](https://github.com/nazaninghelichi)
+
