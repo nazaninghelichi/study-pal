@@ -52,7 +52,7 @@ async def call_openrouter(prompt: str) -> str:
     payload = {
         "model": "gpt-3.5-turbo",
         "messages": [
-            {"role": "system", "content": "You are a cold, elite headhunter with a sharp tongue and high standards. Keep it short, human, no fluff."},
+            {"role": "system", "content": "You are a cold, elite study coach with a sharp tongue and high standards. Keep it short, human, no fluff."},
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 400
@@ -89,9 +89,9 @@ Tone: cold, direct, tactical. No fluff. Tips should be concrete and realistic.
 1. Start with: 'Ladies and gentlemen,'
 2. Celebrate top performer: {top_name} nailed {top_count}/{top_goal}. Trait: {top_trait}. Compliment them.
 3. Roast lowest performer: {least_name} did {least_count}/{least_goal}. Trait: {least_trait}. Light roast, keep it clever.
-4. For users who completed 0–33%: give 1 clear, tactical job search tip (e.g., when and how to apply).
+4. For users who completed 0–33%: give 1 clear, tactical study tip (e.g., best times to study, focus techniques).
 5. For users at 34–67%: give 1 time-management or focus-related tip they can act on immediately.
-6. For users at 67–100%: give 1 advanced strategy (e.g., networking, tailoring applications) to improve quality.
+6. For users at 67–100%: give 1 advanced strategy (e.g., spaced repetition, group study) to improve quality.
 7. End with: 'One percent better tomorrow.'
 """
 
@@ -138,7 +138,7 @@ async def send_wrapup(application: Application, chat_ids: list[int], chat_names:
         trait = profile.get("trait", "ambiguous mystery")
         percent = int((done / goal) * 100) if goal else 0
 
-        prompt = f"""Create a 4-line cold motivational message for a job seeker:
+        prompt = f"""Create a 4-line cold motivational message for a student:
 Name: {name}
 Done: {done}/{goal} ({percent}%)
 Streak: {streak} days
