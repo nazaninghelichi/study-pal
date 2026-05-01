@@ -60,7 +60,7 @@ async def morning_reminder(context: ContextTypes.DEFAULT_TYPE):
     user_id = job.chat_id
 
     display_name, goal, _ = await _get_user_info(user_id)
-    text = f"😺 Good morning, {display_name}! You have a goal of {goal} applications today."
+    text = f"😺 Good morning, {display_name}! You have a goal of {goal} questions to complete today."
     await context.bot.send_message(chat_id=user_id, text=text)
 
     gif_url = await _get_random_gif("come catch me cat")
