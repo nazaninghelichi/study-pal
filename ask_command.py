@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------
 
 # ========== LLM CALL ==========
-async def ask_jobpal_ai(question: str) -> str:
+async def ask_studypal_ai(question: str) -> str:
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
@@ -25,7 +25,7 @@ async def ask_jobpal_ai(question: str) -> str:
     data = {
         "model": "mistralai/mistral-7b-instruct",
         "messages": [
-            {"role": "system", "content": "You are JobPal, a tough love career coach who gives direct, motivational advice with a military/coach style tone. Use phrases like 'soldier', 'recruit', 'let's crush this', etc."},
+            {"role": "system", "content": "You are Study-Pal, a tough love study coach who gives direct, motivational advice with a military/coach style tone. Use phrases like 'soldier', 'recruit', 'let's crush this', etc."},
             {"role": "user", "content": question}
         ]
     }
@@ -60,12 +60,12 @@ async def ask_jobpal_ai(question: str) -> str:
         logger.error(f"Network error connecting to OpenRouter API: {e}")
         raise ConnectionError("Network error contacting AI service")
     except Exception as e:
-        logger.error(f"Error processing AI response in ask_jobpal_ai: {e}", exc_info=True)
+        logger.error(f"Error processing AI response in ask_studypal_ai: {e}", exc_info=True)
         raise ValueError("Invalid response/error processing AI result")
 
 # ========== DB INIT ==========
 def init_question_db():
-    conn = sqlite3.connect("jobpal.db")
+    conn = sqlite3.connect("studypal.db")
     c = conn.cursor()
     c.execute("""
         CREATE TABLE IF NOT EXISTS user_questions (
@@ -78,7 +78,7 @@ def init_question_db():
     conn.close()
 
 def init_goal_and_progress_tables():
-    conn = sqlite3.connect("jobpal.db")
+    conn = sqlite3.connect("studypal.db")
     c = conn.cursor()
     c.execute("""
         CREATE TABLE IF NOT EXISTS user_goals (
@@ -100,7 +100,7 @@ def init_goal_and_progress_tables():
 # ========== LIMIT CHECK ==========
 def check_question_limit(user_id: int) -> bool:
     today = datetime.date.today().isoformat()
-    conn = sqlite3.connect("jobpal.db")
+    conn = sqlite3.connect("studypal.db")
     c = conn.cursor()
     c.execute("SELECT count FROM user_questions WHERE user_id = ? AND date = ?", (user_id, today))
     row = c.fetchone()
@@ -109,7 +109,7 @@ def check_question_limit(user_id: int) -> bool:
 
 def log_question(user_id: int):
     today = datetime.date.today().isoformat()
-    conn = sqlite3.connect("jobpal.db")
+    conn = sqlite3.connect("studypal.db")
     c = conn.cursor()
     c.execute("SELECT count FROM user_questions WHERE user_id = ? AND date = ?", (user_id, today))
     row = c.fetchone()
@@ -136,7 +136,7 @@ async def ask_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = update.message.text
     await update.message.reply_text("💭 ANALYZING YOUR SITUATION...")
     try:
-        answer = await ask_jobpal_ai(question)
+        answer = await ask_studypal_ai(question)
         await update.message.reply_text(answer)
         log_question(user_id)
     except Exception as e:
