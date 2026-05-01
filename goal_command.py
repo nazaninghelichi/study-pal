@@ -17,7 +17,7 @@ AWAIT_GOAL, LOGGING = range(2)
 # Button config
 BUTTON_PREFIX = "setgoal_"
 BUTTON_STEPS = [5, 10, 15]
-LOG_PREFIX = "logjob_"
+LOG_PREFIX = "logstudy_"
 LOG_DONE = "done"
 CANCEL = "cancel"
 
@@ -132,16 +132,16 @@ def get_setgoal_handler() -> ConversationHandler:
     )
 
 # =========================================
-# /logjobs Conversation
+# /logstudies Conversation
 # =========================================
 def build_log_ui(done: int, goal: int) -> str:
     bar = '✅' * min(done, goal) + '⬜️' * max(0, goal - done)
     extra = f" +{done - goal} ✨" if done > goal else ''
     return f"📦 Today: {done}\n🌟 Goal: {goal}\n{bar}{extra}"
 
-async def start_logjobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start_logstudies(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
-    logger.info(f"/logjobs initiated by user {user_id}")
+    logger.info(f"/logstudies initiated by user {user_id}")
     goal, done = await get_or_create_today(user_id)
     keyboard = [
         [InlineKeyboardButton('➕ Log one', callback_data=f"{LOG_PREFIX}inc")],
@@ -189,9 +189,9 @@ async def log_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     # If somehow reached here, cancel
     return await cancel(update, context)
 
-def get_logjobs_handler() -> ConversationHandler:
+def get_logstudies_handler() -> ConversationHandler:
     return ConversationHandler(
-        entry_points=[CommandHandler('logjobs', start_logjobs)],
+        entry_points=[CommandHandler('logstudies', start_logstudies)],
         states={
             LOGGING: [
                 CallbackQueryHandler(log_button, pattern=f"^{LOG_PREFIX}(inc|{LOG_DONE})$"),
