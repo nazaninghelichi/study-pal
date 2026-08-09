@@ -23,6 +23,7 @@ from goal_command import (
     progress
 )
 from username_command import get_setname_handler
+from link_command import get_link_handler
 from leaderboard_command import leaderboard as leaderboard_actual
 from config import TELEGRAM_BOT_TOKEN
 from reminders import register_reminders
@@ -206,6 +207,7 @@ if __name__ == "__main__":
     app.add_handler(get_setgoal_handler())
     app.add_handler(get_logstudies_handler())
     app.add_handler(get_setname_handler())
+    app.add_handler(get_link_handler())
     app.add_handler(CallbackQueryHandler(start, pattern="^cancel$"))
 
     # Configure JobQueue timezone and schedule reminders

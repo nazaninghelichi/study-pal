@@ -1,13 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Sign in — Study-Pal{% endblock %}
+{% block title %}Sign in — Mathoclock{% endblock %}
 {% block content %}
 <div class="card auth-card">
-  <h1>📚 Study-Pal</h1>
-  <p class="muted">Set a daily question goal, log your progress, keep a streak going. No app, no phone number — just email.</p>
+  <h1>😺 Mathoclock</h1>
+  <p class="muted">Purr-severance, one problem at a time. Set a daily goal, log your progress, keep a cat mildly impressed. No app, no phone number — just email.</p>
   <form method="post" action="{{ url_for('login') }}">
     <label for="email">Email</label>
     <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
-    <button type="submit">Send sign-in link</button>
+    <button type="submit" class="primary">Send sign-in link</button>
   </form>
+
+  {% if dev_mode %}
+  <div class="dev-note">
+    <strong>Dev mode</strong> — no SMTP configured, so no real email will send.
+    <form method="post" action="{{ url_for('demo_login') }}" style="margin-top: 0.6rem;">
+      <button type="submit" class="secondary">🐱 Skip email — use demo account</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <p class="muted" style="margin-top: 1.2rem;"><a href="{{ url_for('about_route') }}">About this app</a></p>
 </div>
 {% endblock %}

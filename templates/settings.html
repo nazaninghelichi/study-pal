@@ -1,13 +1,74 @@
 {% extends "base.html" %}
-{% block title %}Settings — Study-Pal{% endblock %}
+{% block title %}Settings — Mathoclock{% endblock %}
 {% block content %}
+
 <div class="card">
   <h1>⚙️ Settings</h1>
-  <p class="muted">Signed in as {{ email }}</p>
+
+  <div class="settings-row">
+    <div>
+      <div class="label">🔗 Link Telegram Bot</div>
+      <div class="sublabel">{% if link_status %}Linked · streak and totals combine across both{% else %}Unlinked{% endif %}</div>
+    </div>
+    {% if not link_status %}
+    <form method="post" action="{{ url_for('settings_link_route') }}">
+      <button type="submit" class="secondary">Link</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if link_code %}
+  <div class="link-code-box">
+    <span class="hint">Send this to the bot within 15 minutes:</span>
+    <span class="code">/link {{ link_code }}</span>
+    <span class="hint">Open the Telegram bot and paste that command.</span>
+  </div>
+  {% endif %}
+
+  <div class="settings-row">
+    <div class="label">✉️ Email</div>
+    <div class="sublabel">{{ email }}</div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="label">🔒 Passwordless Auth</div>
+      <div class="sublabel">No password needed — we email a one-click link</div>
+    </div>
+  </div>
+
+  <div class="settings-row">
+    <div class="label">🔔 Notifications</div>
+    <form method="post" action="{{ url_for('settings_notifications_route') }}">
+      <input type="hidden" name="enabled" value="{{ '0' if reminders_enabled else '1' }}">
+      <button type="submit" class="toggle-btn {% if reminders_enabled %}on{% endif %}">
+        {{ 'On' if reminders_enabled else 'Off' }}
+      </button>
+    </form>
+  </div>
+
+  <div class="settings-row" style="flex-direction: column; align-items: flex-start;">
+    <div class="label" style="margin-bottom: 0.5rem;">Cat mood</div>
+    <div class="avatar-row">
+      {% for emoji in avatar_choices %}
+      <form method="post" action="{{ url_for('settings_avatar_route') }}">
+        <input type="hidden" name="emoji" value="{{ emoji }}">
+        <button type="submit" class="avatar-btn {% if avatar == emoji %}active{% endif %}">{{ emoji }}</button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Display name</h2>
   <form method="post" action="{{ url_for('settings_route') }}">
-    <label for="name">Display name</label>
+    <label for="name">Name</label>
     <input type="text" id="name" name="name" value="{{ name }}" required>
     <button type="submit" class="primary">Save</button>
   </form>
+</div>
+
+<div class="logout-row">
+  <a href="{{ url_for('logout') }}">Log Out</a>
 </div>
 {% endblock %}

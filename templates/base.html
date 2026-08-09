@@ -3,18 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Study-Pal{% endblock %}</title>
+  <title>{% block title %}Mathoclock{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%98%BA%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <div class="brand-strip">
+    <span id="live-clock" class="digital-pill">--:--:--</span>
+    <span class="brand-strip-tag">
+      <img src="{{ url_for('static', filename='mathoclock-logo.png') }}" alt="Mathoclock" class="brand-logo">
+      Mathoclock
+    </span>
+  </div>
   {% if session.get('user_id') %}
   <nav class="topnav">
-    <a class="brand" href="{{ url_for('dashboard') }}">📚 Study-Pal</a>
+    <a class="brand" href="{{ url_for('dashboard') }}">😺 Mathoclock</a>
     <div class="nav-links">
       <a href="{{ url_for('dashboard') }}">Today</a>
+      <a href="{{ url_for('pomewdoro_route') }}">Pomewdoro</a>
       <a href="{{ url_for('progress_route') }}">Progress</a>
       <a href="{{ url_for('leaderboard_route') }}">Leaderboard</a>
+      <a href="{{ url_for('collection_route') }}">Collection</a>
       <a href="{{ url_for('settings_route') }}">Settings</a>
+      <a href="{{ url_for('about_route') }}">About</a>
       <a href="{{ url_for('logout') }}">Log out</a>
     </div>
   </nav>
@@ -27,5 +38,8 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
+  <script src="{{ url_for('static', filename='clock.js') }}"></script>
+  <script>MathoclockClock.start('live-clock');</script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

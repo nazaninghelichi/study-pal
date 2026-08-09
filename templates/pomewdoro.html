@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Pomewdoro — Mathoclock{% endblock %}
+{% block content %}
+
+<div class="card">
+  {% if state %}
+    <div class="pomo-phase-label">{{ '🎯 Focus' if state.phase == 'focus' else '☕ Break' }}</div>
+    <div class="digital-clock">
+      <div class="readout" id="pomo-readout">--:--</div>
+      <div class="dc-label">{{ state.duration_minutes }} min {{ state.phase }}</div>
+    </div>
+
+    {% if state.phase == 'focus' %}
+    <div class="pomo-sky" id="pomo-sky"></div>
+    <div class="pomo-tray">🐱 <span id="pomo-tray-count">0</span> collected this session</div>
+    {% else %}
+    <p class="muted" style="text-align:center;">Cats take a break too. Back to focus when you're ready.</p>
+    {% endif %}
+
+    <form id="pomo-finish-form" method="post" action="{{ url_for('pomewdoro_finish_route') }}" class="pomo-actions">
+      <button type="submit" class="secondary">{{ 'Stop & Collect' if state.phase == 'focus' else 'Skip Break' }}</button>
+    </form>
+  {% else %}
+    <div class="pomo-phase-label">🎯 Ready to focus?</div>
+    <p class="muted">{{ focus_minutes }} minutes of focus. A cat drops from the sky every minute you stick with it. Collect them all in your <a href="{{ url_for('collection_route') }}">lifetime collection</a>.</p>
+    <form method="post" action="{{ url_for('pomewdoro_start_route') }}" class="pomo-actions">
+      <button type="submit" class="primary">Start Focus Session</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if state %}
+<script src="{{ url_for('static', filename='pomewdoro.js') }}"></script>
+<script>
+  Pomewdoro.initTimer({
+    phase: "{{ state.phase }}",
+    remainingSeconds: {{ state.remaining_seconds | round(0, 'floor') | int }},
+    durationMinutes: {{ state.duration_minutes }},
+    elapsedSeconds: {{ state.elapsed_seconds | round(0, 'floor') | int }}
+  });
+</script>
+{% endif %}
+{% endblock %}

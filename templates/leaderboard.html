@@ -1,22 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Leaderboard — Study-Pal{% endblock %}
+{% block title %}Leaderboard — Mathoclock{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>🏆 Today's top studiers</h1>
+  <h1>🏆 Leaderboard</h1>
   {% if not rows %}
-  <p class="muted">No one has logged anything yet today — be the first.</p>
+  <p class="muted">Every cat's asleep so far — be the first to log one.</p>
   {% else %}
-  <ol class="leaderboard">
-    {% for row in rows %}
-    <li class="{% if row.user_id == my_user_id %}me{% endif %}">
-      <span class="medal">
-        {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}.{% endif %}
-      </span>
-      <span class="lb-name">{{ row.display_name }}</span>
-      <span class="lb-count">{{ row.done }}</span>
-    </li>
-    {% endfor %}
-  </ol>
+  <div class="table-wrap">
+    <table class="lb-table">
+      <thead>
+        <tr><th>Global</th><th>User</th><th>Streaks</th><th>Total problems</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{% if row.user_id == my_user_id %}me{% endif %}">
+          <td>{{ loop.index }}</td>
+          <td>{{ row.avatar or '🐱' }} {{ row.display_name }}</td>
+          <td>{{ row.streak }}</td>
+          <td>{{ row.total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </div>
 {% endblock %}

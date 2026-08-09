@@ -1,8 +1,52 @@
 {% extends "base.html" %}
-{% block title %}Progress — Study-Pal{% endblock %}
+{% block title %}Progress — Mathoclock{% endblock %}
 {% block content %}
+
 <div class="card">
-  <h1>📊 This week</h1>
+  <div class="streak-header"><span class="flame">🔥</span><span class="n">{{ streak }}-day streak</span></div>
+  <h2>Long-term history</h2>
+  <div class="heatmap-scroll">
+    <div class="heatmap-inner">
+      <div class="heatmap-months">
+        {% for m in heatmap.months %}<span class="heatmap-month-label">{{ m }}</span>{% endfor %}
+      </div>
+      <div class="heatmap-grid">
+        {% for week in heatmap.weeks %}
+        <div class="heatmap-week">
+          {% for cell in week %}
+            {% if cell %}
+            <div class="heatmap-cell level-{{ cell.level }}" title="{{ cell.date }}"></div>
+            {% else %}
+            <div class="heatmap-cell"></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="heatmap-legend">
+    <span>Low</span>
+    <span class="heatmap-cell level-1"></span>
+    <span class="heatmap-cell level-2"></span>
+    <span class="heatmap-cell level-3"></span>
+    <span class="heatmap-cell level-4"></span>
+    <span>High</span>
+  </div>
+
+  {% for badge in badges %}
+  <div class="badge-card">
+    <span class="badge-emoji">{{ badge.emoji }}</span>
+    <div>
+      <div class="badge-name">{{ badge.name }}</div>
+      <div class="badge-detail">{{ badge.detail }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>This week</h2>
   <ul class="week-list">
     {% for d in days %}
     <li class="{% if d.is_today %}today{% endif %}">

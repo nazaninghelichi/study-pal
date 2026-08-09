@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}About — Mathoclock{% endblock %}
+{% block content %}
+
+<div class="card about-hero">
+  <img src="{{ url_for('static', filename='mathoclock-logo.png') }}" alt="Mathoclock">
+  <h1>😺 Mathoclock</h1>
+  <div class="digital-clock">
+    <div class="readout" id="about-clock-readout">--:--:--</div>
+    <div class="dc-label" id="about-clock-label">Toronto time</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🧮 What it does</h2>
+  <p>You set a daily goal — how many practice problems you're doing today — and log each one as you finish it. It tracks your streak, ranks you on a leaderboard, and reminds you if the number hasn't moved.</p>
+</div>
+
+<div class="card">
+  <h2>How it works</h2>
+  <div class="loop">
+    <div class="loop-step"><span class="n">01</span>Set a daily goal</div>
+    <div class="loop-step"><span class="n">02</span>Log problems as you go</div>
+    <div class="loop-step"><span class="n">03</span>Watch the streak build</div>
+    <div class="loop-step"><span class="n">04</span>Get reminded if you stall</div>
+    <div class="loop-step"><span class="n">05</span>Check the leaderboard</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Two surfaces, one account</h2>
+  <p>Same Postgres database underneath both — your goal and streak carry over no matter which one you open.</p>
+  <div class="surfaces">
+    <div class="surface-box">📱 Telegram bot</div>
+    <span class="surface-arrow">↕</span>
+    <div class="surface-box">🗄️ Shared database</div>
+    <span class="surface-arrow">↕</span>
+    <div class="surface-box">🌐 Website — email sign-in, no phone needed</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>😺 The cat has moods</h2>
+  <p>A running mood indicator, tied to how today's goal is going:</p>
+  <div class="mood-row">
+    <div class="mood"><span class="emoji">😴</span><span class="label">Nothing logged</span></div>
+    <div class="mood"><span class="emoji">🐈</span><span class="label">Chipping away</span></div>
+    <div class="mood"><span class="emoji">😻</span><span class="label">Goal crushed</span></div>
+    <div class="mood"><span class="emoji">🙀</span><span class="label">Overachiever</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Philosophy</h2>
+  <p>Most students don't fall behind because they don't understand the material — they fall behind because they stop showing up. Mathoclock exists to make showing up visible: a goal you committed to, a number that either moved today or didn't, a streak with something real to lose.</p>
+  <div class="stat-callout">
+    <span class="big">25%+</span>
+    <span class="caption">higher day-to-day follow-through observed among Mathoclock tutoring students using a daily accountability tool like this, vs. tracking nothing at all</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🕐 Origin story</h2>
+  <div class="timeline">
+    <div class="tl-item"><span class="tl-date">Apr 2025</span><span class="tl-text">Built as <strong>JobPal</strong> — same goal/log/streak/leaderboard mechanics, tracking job applications.</span></div>
+    <div class="tl-item"><span class="tl-date">Apr 2026</span><span class="tl-text">Rebuilt into <strong>Mathoclock</strong> — same engine, repointed at daily math practice.</span></div>
+    <div class="tl-item"><span class="tl-date">Aug 2026</span><span class="tl-text">Added a website, so it works without a phone or the Telegram app.</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Made by</h2>
+  <p>Built by <a href="https://github.com/nazaninghelichi" target="_blank" rel="noopener">@nazaninghelichi</a>, also behind <strong>Mathoclock</strong> tutoring.</p>
+  <p class="muted">Feedback, bugs, or cat gif complaints: <a href="mailto:calpal.agent@gmail.com">calpal.agent@gmail.com</a></p>
+</div>
+
+{% if not session.get('user_id') %}
+<p><a href="{{ url_for('index') }}">&larr; Back to sign in</a></p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>MathoclockClock.start('about-clock-readout', 'about-clock-label');</script>
+{% endblock %}

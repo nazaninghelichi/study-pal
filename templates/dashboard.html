@@ -1,26 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Today — Study-Pal{% endblock %}
+{% block title %}Today — Mathoclock{% endblock %}
 {% block content %}
 <div class="card">
+  <div class="digital-clock">
+    <div class="readout" id="dash-clock-readout">--:--:--</div>
+    <div class="dc-label" id="dash-clock-label">{{ clock.label }}</div>
+  </div>
+
   <h1>👋 Hey, {{ name }}</h1>
+  <p class="quip">{{ quip }}</p>
+
+  <div class="goal-banner">
+    <span>🎯 Daily Goal: {{ goal }} Problem{{ 's' if goal != 1 else '' }}</span>
+    <a href="#goal-settings">Change Goal</a>
+  </div>
 
   <div class="progress-block">
     <div class="progress-numbers">
       <span class="big-num">{{ done }}</span>
       <span class="muted">/ {{ goal }} today</span>
     </div>
-    <div class="bar-track">
+    <div class="bar-track dark">
       <div class="bar-fill" style="width: {{ (100 * done / goal) if goal else 0 }}%"></div>
+    </div>
+    <div class="mood-card {% if flavor.sprite in ['goal', 'berserk'] %}celebrate{% endif %}">
+      <img src="{{ url_for('static', filename='cats/' + flavor.sprite + '.png') }}" alt="{{ flavor.headline }}" class="mood-sprite">
+      <div class="mood-text">
+        <span>{{ flavor.emoji }} {{ flavor.headline }}</span>
+        <span class="chip trait-chip">{{ flavor.trait }}</span>
+      </div>
     </div>
   </div>
 
-  <form method="post" action="{{ url_for('log_route') }}" class="log-form">
-    <button type="submit" name="action" value="inc" class="primary">➕ Log one</button>
-    <button type="submit" name="action" value="dec" class="secondary" {% if done == 0 %}disabled{% endif %}>➖ Undo</button>
+  {% if gif_url %}
+  <div class="reward">
+    <img src="{{ gif_url }}" alt="A cat celebrating your goal" class="reward-gif">
+    <p class="muted">Goal met. The cat approves.</p>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('log_route') }}" class="quick-log-row">
+    <span class="side-text">Purr-sonal best incoming?</span>
+    <input type="hidden" name="action" value="inc">
+    <button type="submit" class="quick-log-btn">+1 Problem Logged</button>
+    <span class="side-text">Purr-sonal best incoming?</span>
+  </form>
+  <form method="post" action="{{ url_for('log_route') }}" class="undo-link">
+    <input type="hidden" name="action" value="dec">
+    <button type="submit" {% if done == 0 %}disabled{% endif %}>↩️ Undo last log</button>
   </form>
 </div>
 
-<div class="card">
+<div class="card" id="goal-settings">
   <h2>Daily goal</h2>
   <div class="chip-row">
     {% for step in [5, 10, 15] %}
@@ -35,4 +66,8 @@
     <button type="submit" class="secondary">Set</button>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>MathoclockClock.start('dash-clock-readout');</script>
 {% endblock %}

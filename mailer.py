@@ -18,8 +18,8 @@ def send_magic_link(email: str, link: str) -> None:
         logger.warning("[DEV MODE] no SMTP_HOST set — sign-in link for %s: %s", email, link)
         return
 
-    msg = MIMEText(f"Tap to sign in to Study-Pal (link expires in 15 minutes):\n\n{link}")
-    msg["Subject"] = "Your Study-Pal sign-in link"
+    msg = MIMEText(f"Tap to sign in to Mathoclock (link expires in 15 minutes):\n\n{link}")
+    msg["Subject"] = "Your Mathoclock sign-in link"
     msg["From"] = EMAIL_FROM
     msg["To"] = email
 
