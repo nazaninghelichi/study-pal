@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Progress — Study-Pal{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>📊 This week</h1>
+  <ul class="week-list">
+    {% for d in days %}
+    <li class="{% if d.is_today %}today{% endif %}">
+      <span class="day-label">{{ d.label }}</span>
+      <div class="bar-track small">
+        <div class="bar-fill" style="width: {{ (100 * d.done / d.goal) if d.goal else 0 }}%"></div>
+      </div>
+      <span class="day-count">{{ d.done }}/{{ d.goal }}</span>
+      <span class="day-status">{% if d.goal and d.done >= d.goal %}✅{% elif d.done > 0 %}🟡{% else %}⬜️{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="muted total-line">Total: {{ total_done }}/{{ total_goal }} ({{ pct }}%)</p>
+</div>
+{% endblock %}

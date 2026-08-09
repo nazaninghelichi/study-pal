@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Settings — Study-Pal{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>⚙️ Settings</h1>
+  <p class="muted">Signed in as {{ email }}</p>
+  <form method="post" action="{{ url_for('settings_route') }}">
+    <label for="name">Display name</label>
+    <input type="text" id="name" name="name" value="{{ name }}" required>
+    <button type="submit" class="primary">Save</button>
+  </form>
+</div>
+{% endblock %}

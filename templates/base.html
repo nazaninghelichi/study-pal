@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Study-Pal{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if session.get('user_id') %}
+  <nav class="topnav">
+    <a class="brand" href="{{ url_for('dashboard') }}">📚 Study-Pal</a>
+    <div class="nav-links">
+      <a href="{{ url_for('dashboard') }}">Today</a>
+      <a href="{{ url_for('progress_route') }}">Progress</a>
+      <a href="{{ url_for('leaderboard_route') }}">Leaderboard</a>
+      <a href="{{ url_for('settings_route') }}">Settings</a>
+      <a href="{{ url_for('logout') }}">Log out</a>
+    </div>
+  </nav>
+  {% endif %}
+  <main class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

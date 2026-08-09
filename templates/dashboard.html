@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Today — Study-Pal{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>👋 Hey, {{ name }}</h1>
+
+  <div class="progress-block">
+    <div class="progress-numbers">
+      <span class="big-num">{{ done }}</span>
+      <span class="muted">/ {{ goal }} today</span>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill" style="width: {{ (100 * done / goal) if goal else 0 }}%"></div>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('log_route') }}" class="log-form">
+    <button type="submit" name="action" value="inc" class="primary">➕ Log one</button>
+    <button type="submit" name="action" value="dec" class="secondary" {% if done == 0 %}disabled{% endif %}>➖ Undo</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Daily goal</h2>
+  <div class="chip-row">
+    {% for step in [5, 10, 15] %}
+    <form method="post" action="{{ url_for('set_goal_route') }}">
+      <input type="hidden" name="goal" value="{{ step }}">
+      <button type="submit" class="chip {% if goal == step %}chip-active{% endif %}">{{ step }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  <form method="post" action="{{ url_for('set_goal_route') }}" class="inline-form">
+    <input type="number" name="goal" min="0" placeholder="custom" value="{{ goal }}">
+    <button type="submit" class="secondary">Set</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Check your email — Study-Pal{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>✉️ Check your inbox</h1>
+  <p class="muted">We sent a sign-in link to <strong>{{ email }}</strong>. It expires in 15 minutes.</p>
+  {% if dev_link %}
+  <div class="dev-note">
+    <strong>Dev mode</strong> — no SMTP configured, so no email was actually sent.
+    <a href="{{ dev_link }}">Click here to sign in</a>.
+  </div>
+  {% endif %}
+  <p><a href="{{ url_for('index') }}">&larr; Use a different email</a></p>
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 import os
+import secrets
 from dotenv import load_dotenv
 import asyncpg
 
@@ -96,7 +97,89 @@ async def init_db_pg():
         """
     )
 
+    # Create web_users table (email-login users, distinct from Telegram users)
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS web_users (
+          id         SERIAL PRIMARY KEY,
+          email      TEXT UNIQUE NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+
+    # Create magic_links table (single-use, expiring email sign-in tokens)
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS magic_links (
+          token      TEXT PRIMARY KEY,
+          email      TEXT NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          used       BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+
     await conn.close()
+
+
+async def create_magic_link(email: str) -> str:
+    """Issue a 15-minute single-use sign-in token for an email address."""
+    from datetime import datetime, timedelta
+
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO magic_links (token, email, expires_at) VALUES ($1, $2, $3)",
+        token, email, expires_at
+    )
+    await conn.close()
+    return token
+
+
+async def consume_magic_link(token: str) -> str | None:
+    """Validate and burn a token in one step. Returns the email, or None if invalid/expired/used."""
+    from datetime import datetime
+
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT email, expires_at, used FROM magic_links WHERE token = $1", token
+    )
+    if not row or row["used"] or row["expires_at"] < datetime.utcnow():
+        await conn.close()
+        return None
+    await conn.execute("UPDATE magic_links SET used = TRUE WHERE token = $1", token)
+    await conn.close()
+    return row["email"]
+
+
+async def get_or_create_web_user(email: str) -> int:
+    """
+    Map an email to the shared user_id space used by daily_track/users/etc.
+
+    Telegram user_ids are always positive, so web users are keyed on the
+    *negative* of their web_users.id — guaranteed never to collide with a
+    real Telegram id, with no coordination needed between the two tables.
+    """
+    conn = await get_pg_conn()
+    row = await conn.fetchrow("SELECT id FROM web_users WHERE email = $1", email)
+    if row:
+        web_id = row["id"]
+    else:
+        row = await conn.fetchrow(
+            "INSERT INTO web_users (email) VALUES ($1) RETURNING id", email
+        )
+        web_id = row["id"]
+        default_name = email.split("@")[0]
+        await conn.execute(
+            "INSERT INTO users (user_id, username, first_name) VALUES ($1, '', $2) "
+            "ON CONFLICT (user_id) DO NOTHING",
+            -web_id, default_name
+        )
+    await conn.close()
+    return -web_id
 
 async def save_wrapup_log(content: str, date_, user_id=None):
     conn = await get_pg_conn()

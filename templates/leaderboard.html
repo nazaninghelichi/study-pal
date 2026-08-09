@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — Study-Pal{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>🏆 Today's top studiers</h1>
+  {% if not rows %}
+  <p class="muted">No one has logged anything yet today — be the first.</p>
+  {% else %}
+  <ol class="leaderboard">
+    {% for row in rows %}
+    <li class="{% if row.user_id == my_user_id %}me{% endif %}">
+      <span class="medal">
+        {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}.{% endif %}
+      </span>
+      <span class="lb-name">{{ row.display_name }}</span>
+      <span class="lb-count">{{ row.done }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+</div>
+{% endblock %}
