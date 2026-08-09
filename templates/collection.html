@@ -5,16 +5,22 @@
 <div class="card">
   <h1>🐱 Cat Collection</h1>
   <div class="collection-total">
-    <span class="n">{{ total }}</span>
-    <div class="muted">cats collected, all-time</div>
+    <span class="n">{{ found }}</span>
+    <span class="muted">/ {{ roster|length }} cats found · {{ total }} collected all-time</span>
   </div>
 
   <div class="collection-grid">
-    {% for cat_type in cat_types %}
-    <div class="collection-item {% if not counts.get(cat_type) %}empty{% endif %}">
-      <img src="{{ url_for('static', filename='cats/' + cat_type + '.png') }}" alt="{{ cat_type }}">
-      <div class="cat-name">{{ cat_type }}</div>
-      <div class="cat-count">{{ counts.get(cat_type, 0) }}</div>
+    {% for slug, cat_name in roster.items() %}
+    <div class="collection-item {% if not counts.get(slug) %}empty{% endif %}">
+      {% if counts.get(slug) %}
+      <img src="{{ url_for('static', filename='named_cats/' + slug + '.png') }}" alt="{{ cat_name }}">
+      <div class="cat-name">{{ cat_name }}</div>
+      <div class="cat-count">×{{ counts.get(slug, 0) }}</div>
+      {% else %}
+      <div class="cat-locked">🔒</div>
+      <div class="cat-name">?</div>
+      <div class="cat-count">not found yet</div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>

@@ -400,7 +400,24 @@ def settings_avatar_route():
 
 FOCUS_MINUTES = 25
 BREAK_MINUTES = 5
-CAT_TYPES = ["sleepy", "pacing", "goal", "berserk", "nudge"]
+
+# The 12-cat collectible roster for Pomewdoro drops — distinct from the 5 mood
+# sprites used on the dashboard, which stay tied to actual progress state.
+CAT_ROSTER = {
+    "leo": "Leo",
+    "nyx": "Nyx",
+    "misty": "Misty",
+    "rusty": "Rusty",
+    "patch": "Patch",
+    "sly": "Sly",
+    "duchess": "Duchess",
+    "luna": "Luna",
+    "cubery": "Cubery",
+    "boots1": "Boots",
+    "boots2": "Boots",
+    "ollie": "Ollie",
+}
+CAT_TYPES = list(CAT_ROSTER.keys())
 
 
 def _pomo_state():
@@ -462,7 +479,8 @@ def pomewdoro_route():
         _finish_pomo(user_id)
         state = _pomo_state()
     return render_template(
-        "pomewdoro.html", state=state, focus_minutes=FOCUS_MINUTES, break_minutes=BREAK_MINUTES
+        "pomewdoro.html",
+        state=state, focus_minutes=FOCUS_MINUTES, break_minutes=BREAK_MINUTES, cat_types=CAT_TYPES,
     )
 
 
@@ -488,9 +506,13 @@ def pomewdoro_finish_route():
 @app.route("/collection")
 @login_required
 def collection_route():
-    counts = run_async(get_collection(session["user_id"]))
+    raw_counts = run_async(get_collection(session["user_id"]))
+    # only count against the current roster — a user_id can carry orphaned
+    # cat_type rows from an earlier roster (e.g. the old mood-sprite set)
+    counts = {slug: raw_counts[slug] for slug in CAT_ROSTER if raw_counts.get(slug)}
+    found = len(counts)
     return render_template(
-        "collection.html", counts=counts, total=sum(counts.values()), cat_types=CAT_TYPES
+        "collection.html", counts=counts, found=found, total=sum(counts.values()), roster=CAT_ROSTER
     )
 
 

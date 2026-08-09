@@ -13,6 +13,7 @@
     {% if state.phase == 'focus' %}
     <div class="pomo-sky" id="pomo-sky"></div>
     <div class="pomo-tray">🐱 <span id="pomo-tray-count">0</span> collected this session</div>
+    <div class="pomo-landed" id="pomo-landed"></div>
     {% else %}
     <p class="muted" style="text-align:center;">Cats take a break too. Back to focus when you're ready.</p>
     {% endif %}
@@ -38,7 +39,8 @@
     phase: "{{ state.phase }}",
     remainingSeconds: {{ state.remaining_seconds | round(0, 'floor') | int }},
     durationMinutes: {{ state.duration_minutes }},
-    elapsedSeconds: {{ state.elapsed_seconds | round(0, 'floor') | int }}
+    elapsedSeconds: {{ state.elapsed_seconds | round(0, 'floor') | int }},
+    catTypes: {{ cat_types | tojson }}
   });
 </script>
 {% endif %}
