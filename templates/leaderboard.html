@@ -15,7 +15,7 @@
         {% for row in rows %}
         <tr class="{% if row.user_id == my_user_id %}me{% endif %}">
           <td>{{ loop.index }}</td>
-          <td>{{ row.avatar or '🐱' }} {{ row.display_name }}</td>
+          <td>🐱 {{ row.display_name }}</td>
           <td>{{ row.streak }}</td>
           <td>{{ row.total }}</td>
         </tr>

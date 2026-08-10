@@ -347,10 +347,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .toggle-btn { border-radius: 100px; padding: 0.35rem 0.85rem; font-size: 0.78rem; }
 .toggle-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
-.avatar-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.avatar-btn { font-size: 1.15rem; padding: 0.4rem 0.6rem; border-radius: 8px; }
-.avatar-btn.active { background: var(--accent); border-color: var(--accent); }
-
 .link-code-box {
   background: var(--dark-card); color: var(--dark-card-ink); border-radius: 10px;
   padding: 1rem; text-align: center; margin-top: 0.7rem;

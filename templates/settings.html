@@ -46,17 +46,6 @@
     </form>
   </div>
 
-  <div class="settings-row" style="flex-direction: column; align-items: flex-start;">
-    <div class="label" style="margin-bottom: 0.5rem;">Cat mood</div>
-    <div class="avatar-row">
-      {% for emoji in avatar_choices %}
-      <form method="post" action="{{ url_for('settings_avatar_route') }}">
-        <input type="hidden" name="emoji" value="{{ emoji }}">
-        <button type="submit" class="avatar-btn {% if avatar == emoji %}active{% endif %}">{{ emoji }}</button>
-      </form>
-      {% endfor %}
-    </div>
-  </div>
 </div>
 
 <div class="card">

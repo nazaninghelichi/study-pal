@@ -84,8 +84,6 @@ async def init_db_pg():
         );
         """
     )
-    # avatar_emoji added after the table already existed in earlier deployments
-    await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS avatar_emoji TEXT;")
 
     # Create wrapup_logs table
     await conn.execute(
@@ -313,23 +311,6 @@ async def get_link_status(web_user_id: int) -> dict | None:
     return dict(row) if row else None
 
 
-async def get_avatar_emoji(user_id: int) -> str | None:
-    conn = await get_pg_conn()
-    row = await conn.fetchrow("SELECT avatar_emoji FROM user_preferences WHERE user_id = $1", user_id)
-    await conn.close()
-    return row["avatar_emoji"] if row else None
-
-
-async def set_avatar_emoji(user_id: int, emoji: str) -> None:
-    conn = await get_pg_conn()
-    await conn.execute(
-        "INSERT INTO user_preferences (user_id, avatar_emoji) VALUES ($1, $2) "
-        "ON CONFLICT (user_id) DO UPDATE SET avatar_emoji = EXCLUDED.avatar_emoji",
-        user_id, emoji
-    )
-    await conn.close()
-
-
 async def get_reminders_enabled(user_id: int) -> bool:
     conn = await get_pg_conn()
     row = await conn.fetchrow("SELECT reminders_enabled FROM user_preferences WHERE user_id = $1", user_id)
@@ -424,19 +405,12 @@ async def get_full_leaderboard(limit: int = 10) -> list[dict]:
                 display_name = nr["display_name"]
                 break
 
-        avatar_row = await conn.fetchrow(
-            "SELECT avatar_emoji FROM user_preferences WHERE user_id = ANY($1::BIGINT[]) AND avatar_emoji IS NOT NULL LIMIT 1",
-            member_ids
-        )
-        avatar = avatar_row["avatar_emoji"] if avatar_row else None
-
         results.append({
             "user_id": cid,
             "member_ids": member_ids,
             "display_name": display_name or "someone",
             "streak": streak,
             "total": total,
-            "avatar": avatar,
         })
 
     await conn.close()

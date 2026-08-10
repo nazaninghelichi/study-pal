@@ -16,7 +16,6 @@ from db import (
     consume_magic_link,
     create_link_code,
     create_magic_link,
-    get_avatar_emoji,
     get_collection,
     get_full_leaderboard,
     get_history,
@@ -26,7 +25,6 @@ from db import (
     get_reminders_enabled,
     get_streak,
     init_db_pg,
-    set_avatar_emoji,
     set_reminders_enabled,
 )
 from flavor import clock_snapshot, compute_badges, daily_quip, heatmap_level, progress_flavor
@@ -346,9 +344,6 @@ def progress_route():
     )
 
 
-AVATAR_CHOICES = ["🐱", "🐈", "🐈‍⬛", "😻", "😼", "🙀"]
-
-
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings_route():
@@ -367,8 +362,6 @@ def settings_route():
         email=session.get("email"),
         link_status=run_async(get_link_status(user_id)),
         reminders_enabled=run_async(get_reminders_enabled(user_id)),
-        avatar=run_async(get_avatar_emoji(user_id)),
-        avatar_choices=AVATAR_CHOICES,
         link_code=session.pop("pending_link_code", None),
     )
 
@@ -384,15 +377,6 @@ def settings_link_route():
 @login_required
 def settings_notifications_route():
     run_async(set_reminders_enabled(session["user_id"], request.form.get("enabled") == "1"))
-    return redirect(url_for("settings_route"))
-
-
-@app.route("/settings/avatar", methods=["POST"])
-@login_required
-def settings_avatar_route():
-    emoji = request.form.get("emoji", "").strip()
-    if emoji in AVATAR_CHOICES:
-        run_async(set_avatar_emoji(session["user_id"], emoji))
     return redirect(url_for("settings_route"))
 
 
