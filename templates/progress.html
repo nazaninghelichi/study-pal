@@ -3,7 +3,25 @@
 {% block content %}
 
 <div class="card">
-  <div class="streak-header"><span class="flame">🔥</span><span class="n">{{ streak }}-day streak</span></div>
+  <div class="streak-header">
+    <span class="flame">🔥</span><span class="n">{{ streak }}-day streak</span>
+    <span class="hearts-balance">❤️ {{ hearts_balance }}</span>
+  </div>
+
+  {% if repairable_date %}
+  <div class="repair-card">
+    <div>
+      <div class="repair-title">💔 Streak broke on {{ repairable_date }}</div>
+      <div class="muted">Spend {{ streak_repair_cost }} hearts to make it count and keep your streak alive.</div>
+    </div>
+    <form method="post" action="{{ url_for('streak_repair_route') }}">
+      <button type="submit" class="primary" {% if hearts_balance < streak_repair_cost %}disabled{% endif %}>
+        Repair ({{ hearts_balance }}/{{ streak_repair_cost }})
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
   <h2>Long-term history</h2>
   <div class="heatmap-scroll">
     <div class="heatmap-inner">

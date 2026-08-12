@@ -158,6 +158,21 @@ async def init_db_pg():
         """
     )
 
+    # hearts_balance: spendable currency caught during Pomewdoro completion bursts
+    await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS hearts_balance INTEGER NOT NULL DEFAULT 0;")
+
+    # streak_saves: dates a user spent hearts to retroactively count as goal-met,
+    # so a broken streak can be repaired instead of resetting to 0
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS streak_saves (
+          user_id BIGINT NOT NULL,
+          date    TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
+        );
+        """
+    )
+
     await conn.close()
 
 
@@ -329,23 +344,65 @@ async def set_reminders_enabled(user_id: int, enabled: bool) -> None:
 
 
 async def get_streak(user_id: int) -> int:
-    """Current daily streak for one user (goal must be set and met each day)."""
+    """Current daily streak for one user. A day counts if the goal was met, OR the
+    day was repaired with hearts (see streak_saves).
+
+    Today only anchors the walk if it already counts — otherwise today is still in
+    progress and shouldn't zero out an existing streak just for not being done yet.
+    """
     conn = await get_pg_conn()
     today = date.today()
-    streak = 0
-    d = today
-    for _ in range(365):
+    saved_rows = await conn.fetch("SELECT date FROM streak_saves WHERE user_id = $1", user_id)
+    saved_dates = {r["date"] for r in saved_rows}
+
+    async def day_counts(d):
+        d_str = d.isoformat()
         row = await conn.fetchrow(
             "SELECT goal, done FROM daily_track WHERE user_id = $1 AND date = $2",
-            user_id, d.isoformat()
+            user_id, d_str
         )
-        if row and row["goal"] and row["done"] >= row["goal"]:
+        return bool(row and row["goal"] and row["done"] >= row["goal"]) or d_str in saved_dates
+
+    streak = 0
+    d = today if await day_counts(today) else today - timedelta(days=1)
+    for _ in range(365):
+        if await day_counts(d):
             streak += 1
             d -= timedelta(days=1)
         else:
             break
     await conn.close()
     return streak
+
+
+async def get_repairable_date(user_id: int) -> str | None:
+    """The single most recent PAST day that broke the streak, if any and if it's
+    still fresh enough to repair (yesterday only, like a streak freeze). Starts
+    from yesterday, not today — today is still in progress and never counts as
+    "broken" just because it hasn't been logged yet."""
+    conn = await get_pg_conn()
+    today = date.today()
+    saved_rows = await conn.fetch("SELECT date FROM streak_saves WHERE user_id = $1", user_id)
+    saved_dates = {r["date"] for r in saved_rows}
+
+    # walk back through days that already count, to find the first one that doesn't
+    d = today - timedelta(days=1)
+    for _ in range(365):
+        d_str = d.isoformat()
+        row = await conn.fetchrow(
+            "SELECT goal, done FROM daily_track WHERE user_id = $1 AND date = $2",
+            user_id, d_str
+        )
+        goal_met = bool(row and row["goal"] and row["done"] >= row["goal"])
+        if goal_met or d_str in saved_dates:
+            d -= timedelta(days=1)
+        else:
+            break
+    await conn.close()
+
+    if (today - d).days <= 1:
+        return d.isoformat()
+    return None
 
 
 async def get_full_leaderboard(limit: int = 10) -> list[dict]:
@@ -381,15 +438,26 @@ async def get_full_leaderboard(limit: int = 10) -> list[dict]:
         )
         total = total_row["total"]
 
-        streak = 0
-        d = today
-        for _ in range(365):  # safety bound — no one has a 365-day streak yet
+        saved_rows = await conn.fetch(
+            "SELECT date FROM streak_saves WHERE user_id = ANY($1::BIGINT[])", member_ids
+        )
+        saved_dates = {r["date"] for r in saved_rows}
+
+        async def group_day_counts(d, member_ids=member_ids, saved_dates=saved_dates):
+            d_str = d.isoformat()
             day_row = await conn.fetchrow(
                 "SELECT COALESCE(SUM(done), 0) AS done, COALESCE(SUM(goal), 0) AS goal "
                 "FROM daily_track WHERE user_id = ANY($1::BIGINT[]) AND date = $2",
-                member_ids, d.isoformat()
+                member_ids, d_str
             )
-            if day_row["goal"] and day_row["done"] >= day_row["goal"]:
+            return bool(day_row["goal"] and day_row["done"] >= day_row["goal"]) or d_str in saved_dates
+
+        streak = 0
+        # today only anchors the walk if it already counts — otherwise it's still in
+        # progress and shouldn't zero out an existing streak just for not being done yet
+        d = today if await group_day_counts(today) else today - timedelta(days=1)
+        for _ in range(365):  # safety bound — no one has a 365-day streak yet
+            if await group_day_counts(d):
                 streak += 1
                 d -= timedelta(days=1)
             else:
@@ -458,3 +526,78 @@ async def get_collection(user_id: int) -> dict[str, int]:
     rows = await conn.fetch("SELECT cat_type, count FROM cat_collection WHERE user_id = $1", user_id)
     await conn.close()
     return {r["cat_type"]: r["count"] for r in rows}
+
+
+async def get_hearts_balance(user_id: int) -> int:
+    conn = await get_pg_conn()
+    row = await conn.fetchrow("SELECT hearts_balance FROM user_preferences WHERE user_id = $1", user_id)
+    await conn.close()
+    return row["hearts_balance"] if row else 0
+
+
+async def add_hearts(user_id: int, count: int) -> None:
+    if count <= 0:
+        return
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO user_preferences (user_id, hearts_balance) VALUES ($1, $2) "
+        "ON CONFLICT (user_id) DO UPDATE SET hearts_balance = user_preferences.hearts_balance + EXCLUDED.hearts_balance",
+        user_id, count
+    )
+    await conn.close()
+
+
+async def spend_hearts(user_id: int, amount: int) -> bool:
+    """Atomically deducts hearts only if the balance covers it (single statement — no
+    read-then-write race). Returns whether the spend succeeded."""
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "UPDATE user_preferences SET hearts_balance = hearts_balance - $2 "
+        "WHERE user_id = $1 AND hearts_balance >= $2 RETURNING hearts_balance",
+        user_id, amount
+    )
+    await conn.close()
+    return row is not None
+
+
+async def transfer_hearts(sender_id: int, recipient_id: int, amount: int) -> bool:
+    """Moves hearts from sender to recipient atomically. Returns whether it succeeded."""
+    if amount <= 0 or sender_id == recipient_id:
+        return False
+    conn = await get_pg_conn()
+    success = False
+    async with conn.transaction():
+        sender_row = await conn.fetchrow(
+            "SELECT hearts_balance FROM user_preferences WHERE user_id = $1 FOR UPDATE",
+            sender_id
+        )
+        balance = sender_row["hearts_balance"] if sender_row else 0
+        if balance >= amount:
+            await conn.execute(
+                "UPDATE user_preferences SET hearts_balance = hearts_balance - $2 WHERE user_id = $1",
+                sender_id, amount
+            )
+            await conn.execute(
+                "INSERT INTO user_preferences (user_id, hearts_balance) VALUES ($1, $2) "
+                "ON CONFLICT (user_id) DO UPDATE SET hearts_balance = user_preferences.hearts_balance + EXCLUDED.hearts_balance",
+                recipient_id, amount
+            )
+            success = True
+    await conn.close()
+    return success
+
+
+async def save_streak_date(user_id: int, date_str: str) -> None:
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO streak_saves (user_id, date) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        user_id, date_str
+    )
+    await conn.close()
+
+
+async def get_saved_dates(user_id: int) -> set[str]:
+    conn = await get_pg_conn()
+    rows = await conn.fetch("SELECT date FROM streak_saves WHERE user_id = $1", user_id)
+    await conn.close()
+    return {r["date"] for r in rows}

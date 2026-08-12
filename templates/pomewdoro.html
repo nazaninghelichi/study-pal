@@ -11,6 +11,10 @@
     </div>
 
     {% if state.phase == 'focus' %}
+    <div class="growcat-wrap" id="growcat-wrap">
+      <img id="growcat" class="growcat" src="{{ url_for('static', filename='happycat.png') }}" alt="A very happy cat"
+           style="animation-duration: {{ state.duration_minutes * 60 }}s; animation-delay: -{{ state.elapsed_seconds | round(0, 'floor') | int }}s;">
+    </div>
     <div class="pomo-sky" id="pomo-sky"></div>
     <div class="pomo-tray">🐱 <span id="pomo-tray-count">0</span> collected this session</div>
     <div class="pomo-landed" id="pomo-landed"></div>
@@ -19,6 +23,7 @@
     {% endif %}
 
     <form id="pomo-finish-form" method="post" action="{{ url_for('pomewdoro_finish_route') }}" class="pomo-actions">
+      <input type="hidden" name="hearts_caught" id="pomo-hearts-caught" value="0">
       <button type="submit" class="secondary">{{ 'Stop & Collect' if state.phase == 'focus' else 'Skip Break' }}</button>
     </form>
   {% else %}

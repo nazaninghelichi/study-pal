@@ -12,20 +12,26 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 
 from db import (
     add_cats,
+    add_hearts,
     consume_link_code,
     consume_magic_link,
     create_link_code,
     create_magic_link,
     get_collection,
     get_full_leaderboard,
+    get_hearts_balance,
     get_history,
     get_link_status,
     get_or_create_web_user,
     get_pg_conn,
     get_reminders_enabled,
+    get_repairable_date,
     get_streak,
     init_db_pg,
+    save_streak_date,
     set_reminders_enabled,
+    spend_hearts,
+    transfer_hearts,
 )
 from flavor import clock_snapshot, compute_badges, daily_quip, heatmap_level, progress_flavor
 from mailer import send_magic_link
@@ -292,8 +298,32 @@ def log_route():
 @app.route("/leaderboard")
 @login_required
 def leaderboard_route():
+    user_id = session["user_id"]
     rows = run_async(get_full_leaderboard())
-    return render_template("leaderboard.html", rows=rows, my_user_id=session["user_id"])
+    return render_template(
+        "leaderboard.html", rows=rows, my_user_id=user_id,
+        hearts_balance=run_async(get_hearts_balance(user_id)),
+    )
+
+
+@app.route("/hearts/send", methods=["POST"])
+@login_required
+def hearts_send_route():
+    sender_id = session["user_id"]
+    try:
+        recipient_id = int(request.form.get("recipient_id", ""))
+        amount = int(request.form.get("amount", 0))
+    except ValueError:
+        flash("That didn't work — try again.")
+        return redirect(url_for("leaderboard_route"))
+
+    if amount <= 0:
+        flash("Enter a positive number of hearts to send.")
+    elif run_async(transfer_hearts(sender_id, recipient_id, amount)):
+        flash(f"Sent {amount} heart{'s' if amount != 1 else ''}! ❤️")
+    else:
+        flash("Couldn't send — check your balance.")
+    return redirect(url_for("leaderboard_route"))
 
 
 def _build_heatmap(history):
@@ -341,7 +371,27 @@ def progress_route():
         streak=streak,
         badges=compute_badges(history),
         heatmap=_build_heatmap(history),
+        hearts_balance=run_async(get_hearts_balance(user_id)),
+        repairable_date=run_async(get_repairable_date(user_id)),
+        streak_repair_cost=STREAK_REPAIR_COST,
     )
+
+
+@app.route("/streak/repair", methods=["POST"])
+@login_required
+def streak_repair_route():
+    user_id = session["user_id"]
+    repairable_date = run_async(get_repairable_date(user_id))
+    if not repairable_date:
+        flash("No recent broken day to repair.")
+        return redirect(url_for("progress_route"))
+
+    if run_async(spend_hearts(user_id, STREAK_REPAIR_COST)):
+        run_async(save_streak_date(user_id, repairable_date))
+        flash(f"Streak repaired — {repairable_date} now counts. 💔➡️❤️")
+    else:
+        flash(f"Not enough hearts — repairing costs {STREAK_REPAIR_COST}.")
+    return redirect(url_for("progress_route"))
 
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -384,6 +434,8 @@ def settings_notifications_route():
 
 FOCUS_MINUTES = 25
 BREAK_MINUTES = 5
+BURST_PARTICLE_COUNT = 18  # must match pomewdoro.js — sanity bound on hearts_caught
+STREAK_REPAIR_COST = 50
 
 # The 12-cat collectible roster for Pomewdoro drops — distinct from the 5 mood
 # sprites used on the dashboard, which stay tied to actual progress state.
@@ -451,7 +503,7 @@ def _finish_pomo(user_id):
         session["pomo_start"] = datetime.utcnow().isoformat()
         session["pomo_duration"] = BREAK_MINUTES
 
-    return {"phase": phase, "earned": earned, "started_break": started_break}
+    return {"phase": phase, "earned": earned, "started_break": started_break, "completed_fully": completed_fully}
 
 
 @app.route("/pomewdoro")
@@ -480,10 +532,25 @@ def pomewdoro_start_route():
 @app.route("/pomewdoro/finish", methods=["POST"])
 @login_required
 def pomewdoro_finish_route():
-    result = _finish_pomo(session["user_id"])
+    user_id = session["user_id"]
+    result = _finish_pomo(user_id)
     if result and result["earned"]:
         total = sum(result["earned"].values())
         flash(f"Collected {total} cat{'s' if total != 1 else ''}! 🐱")
+
+    # hearts_caught is only meaningful — and only ever sent by the client — when a
+    # full focus session just completed and the burst actually fired. Anything else
+    # (early stop, ending a break) gets the claim ignored regardless of what's posted.
+    if result and result["started_break"]:
+        try:
+            hearts_caught = int(request.form.get("hearts_caught", 0))
+        except ValueError:
+            hearts_caught = 0
+        hearts_caught = max(0, min(hearts_caught, BURST_PARTICLE_COUNT))
+        if hearts_caught:
+            run_async(add_hearts(user_id, hearts_caught))
+            flash(f"Caught {hearts_caught} heart{'s' if hearts_caught != 1 else ''}! ❤️")
+
     return redirect(url_for("pomewdoro_route"))
 
 
