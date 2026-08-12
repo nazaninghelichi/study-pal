@@ -218,6 +218,7 @@ if __name__ == "__main__":
     # === Schedule Daily Wrap-up ===
     from db import get_user_profiles
     from wrapup import send_wrapup
+    from buddy_reports import send_buddy_reports
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
     async def run_daily_wrapup():
@@ -232,8 +233,14 @@ if __name__ == "__main__":
         chat_names = {r["user_id"]: r["name"] for r in rows}
         await send_wrapup(app, chat_ids, chat_names, user_profiles)
 
+    # Buddy reports run from here (not the web app) because this is the only
+    # process in the whole system with a single, reliable background scheduler —
+    # the web app runs under gunicorn with no persistent worker of its own, so a
+    # scheduler there could double- or triple-fire across workers. Covers both
+    # Telegram and web users regardless, since it reads straight from Postgres.
     scheduler = AsyncIOScheduler(timezone=ZoneInfo("America/Toronto"))
     scheduler.add_job(lambda: asyncio.create_task(run_daily_wrapup()), trigger="cron", hour=22, minute=0)
+    scheduler.add_job(lambda: asyncio.create_task(send_buddy_reports()), trigger="cron", hour=22, minute=5)
     scheduler.start()
 
     logger.info("\ud83e\udd16 Study-Pal is live! Press Ctrl+C to stop.")

@@ -17,6 +17,7 @@ from db import (
     consume_magic_link,
     create_link_code,
     create_magic_link,
+    get_buddy_email,
     get_collection,
     get_full_leaderboard,
     get_hearts_balance,
@@ -29,6 +30,7 @@ from db import (
     get_streak,
     init_db_pg,
     save_streak_date,
+    set_buddy_email,
     set_reminders_enabled,
     spend_hearts,
     transfer_hearts,
@@ -412,6 +414,7 @@ def settings_route():
         email=session.get("email"),
         link_status=run_async(get_link_status(user_id)),
         reminders_enabled=run_async(get_reminders_enabled(user_id)),
+        buddy_email=run_async(get_buddy_email(user_id)),
         link_code=session.pop("pending_link_code", None),
     )
 
@@ -427,6 +430,21 @@ def settings_link_route():
 @login_required
 def settings_notifications_route():
     run_async(set_reminders_enabled(session["user_id"], request.form.get("enabled") == "1"))
+    return redirect(url_for("settings_route"))
+
+
+@app.route("/settings/buddy", methods=["POST"])
+@login_required
+def settings_buddy_route():
+    email = request.form.get("buddy_email", "").strip()
+    if not email:
+        run_async(set_buddy_email(session["user_id"], None))
+        flash("Accountability buddy removed.")
+    elif not EMAIL_RE.match(email):
+        flash("That doesn't look like a valid email address.")
+    else:
+        run_async(set_buddy_email(session["user_id"], email))
+        flash("Accountability buddy saved — they'll get a nightly progress report.")
     return redirect(url_for("settings_route"))
 
 

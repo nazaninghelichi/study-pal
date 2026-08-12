@@ -160,6 +160,7 @@ async def init_db_pg():
 
     # hearts_balance: spendable currency caught during Pomewdoro completion bursts
     await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS hearts_balance INTEGER NOT NULL DEFAULT 0;")
+    await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS buddy_email TEXT;")
 
     # streak_saves: dates a user spent hearts to retroactively count as goal-met,
     # so a broken streak can be repaired instead of resetting to 0
@@ -601,3 +602,52 @@ async def get_saved_dates(user_id: int) -> set[str]:
     rows = await conn.fetch("SELECT date FROM streak_saves WHERE user_id = $1", user_id)
     await conn.close()
     return {r["date"] for r in rows}
+
+
+async def get_buddy_email(user_id: int) -> str | None:
+    conn = await get_pg_conn()
+    row = await conn.fetchrow("SELECT buddy_email FROM user_preferences WHERE user_id = $1", user_id)
+    await conn.close()
+    return row["buddy_email"] if row else None
+
+
+async def set_buddy_email(user_id: int, email: str | None) -> None:
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO user_preferences (user_id, buddy_email) VALUES ($1, $2) "
+        "ON CONFLICT (user_id) DO UPDATE SET buddy_email = EXCLUDED.buddy_email",
+        user_id, email
+    )
+    await conn.close()
+
+
+async def get_all_buddy_emails() -> list[tuple[int, str]]:
+    """Every (user_id, buddy_email) pair with a buddy set — works across web and
+    Telegram users alike, since both live in the same user_preferences table."""
+    conn = await get_pg_conn()
+    rows = await conn.fetch(
+        "SELECT user_id, buddy_email FROM user_preferences WHERE buddy_email IS NOT NULL AND buddy_email != ''"
+    )
+    await conn.close()
+    return [(r["user_id"], r["buddy_email"]) for r in rows]
+
+
+async def get_daily_summary(user_id: int) -> dict:
+    """Today's goal/done plus current streak, for the nightly buddy report."""
+    conn = await get_pg_conn()
+    today = date.today().isoformat()
+    name_row = await conn.fetchrow(
+        "SELECT COALESCE(NULLIF(username, ''), first_name) AS display_name FROM users WHERE user_id = $1",
+        user_id
+    )
+    today_row = await conn.fetchrow(
+        "SELECT goal, done FROM daily_track WHERE user_id = $1 AND date = $2", user_id, today
+    )
+    await conn.close()
+    display_name = name_row["display_name"] if name_row and name_row["display_name"] else "your student"
+    return {
+        "display_name": display_name,
+        "goal": today_row["goal"] if today_row else 0,
+        "done": today_row["done"] if today_row else 0,
+        "streak": await get_streak(user_id),
+    }

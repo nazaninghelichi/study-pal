@@ -27,3 +27,32 @@ def send_magic_link(email: str, link: str) -> None:
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
+
+
+def send_progress_report(buddy_email: str, summary: dict) -> None:
+    """Nightly accountability-buddy email. Same dev-mode fallback as send_magic_link."""
+    name = summary["display_name"]
+    goal, done, streak = summary["goal"], summary["done"], summary["streak"]
+    pct = round(done / goal * 100) if goal else 0
+
+    body = (
+        f"Hi,\n\n"
+        f"Here's {name}'s progress on Mathoclock today:\n\n"
+        f"  Goal: {done}/{goal} problems ({pct}%)\n"
+        f"  Current streak: {streak} day{'s' if streak != 1 else ''}\n\n"
+        f"You're getting this because {name} added you as their accountability buddy."
+    )
+
+    if not SMTP_HOST:
+        logger.warning("[DEV MODE] no SMTP_HOST set — progress report for %s to %s:\n%s", name, buddy_email, body)
+        return
+
+    msg = MIMEText(body)
+    msg["Subject"] = f"{name}'s Mathoclock progress today"
+    msg["From"] = EMAIL_FROM
+    msg["To"] = buddy_email
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
