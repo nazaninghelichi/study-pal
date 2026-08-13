@@ -104,9 +104,9 @@ def debug_net_check():
         k: os.environ[k] for k in os.environ
         if "PROXY" in k.upper() or "PRIVATE" in k.upper()
     }
-    for host, port in [("smtp.gmail.com", 587), ("smtp.gmail.com", 465), ("api.telegram.org", 443), ("8.8.8.8", 443), ("8.8.8.8", 587), ("8.8.8.8", 465), ("8.8.8.8", 25), ("api.telegram.org", 587)]:
+    for host, port in [("8.8.8.8", 587), ("8.8.8.8", 465), ("api.telegram.org", 587)]:
         try:
-            s = socket.create_connection((host, port), timeout=5)
+            s = socket.create_connection((host, port), timeout=3)
             s.close()
             results[f"raw_connect_{host}_{port}"] = "OK"
         except Exception as e:
