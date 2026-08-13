@@ -23,7 +23,7 @@ def send_magic_link(email: str, link: str) -> None:
     msg["From"] = EMAIL_FROM
     msg["To"] = email
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
@@ -54,7 +54,7 @@ def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None =
     msg["From"] = EMAIL_FROM
     msg["To"] = buddy_email
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
