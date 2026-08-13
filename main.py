@@ -84,7 +84,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👋 Welcome back, {display_name}!\n\nHere\u2019s what you can do:\n"
         "\u2022 `/logstudies` — Log your applications\n"
         "\u2022 `/setgoal` — Set or change your daily goal\n"
-        "\u2022 `/leaderboard` — See today’s top studiers\n"
+        "\u2022 `/leaderboard` — See yesterday’s buddy-confirmed results\n"
         "\u2022 `/progress` — See your weekly progress\n"
         "\u2022 `/settings` — Configure name, reminders, and more" + tip,
         reply_markup=main_kb,

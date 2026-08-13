@@ -1,44 +1,33 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
-from datetime import date
-from db import get_db_connection
+from datetime import date, timedelta
+from db import get_confirmed_leaderboard
 from telegram import ReplyKeyboardMarkup
 
 logger = logging.getLogger(__name__)
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Fetch and display the top 5 users by jobs logged for today from the database.
+    Show yesterday's buddy-confirmed leaderboard — only students whose
+    accountability buddy confirmed a count for that day appear.
     """
-    # Connect to Postgres
-    conn = await get_db_connection()
-    today_str = date.today().isoformat()
+    board_date = (date.today() - timedelta(days=1)).isoformat()
+    rows = await get_confirmed_leaderboard(board_date)
 
-    # Query top performers from Postgres
-    rows = await conn.fetch(
-        """
-        SELECT u.user_id,
-               COALESCE(NULLIF(u.username, ''), u.first_name) AS display_name,
-               dt.done
-        FROM daily_track dt
-        JOIN users u ON u.user_id = dt.user_id
-        WHERE dt.date = $1 AND dt.done > 0
-        ORDER BY dt.done DESC
-        LIMIT 5;
-        """,
-        today_str
-    )
-    await conn.close()
-
-    # Build response text
     if not rows:
-        text = "📋 No one has logged study sessions today yet."
+        text = (
+            f"📋 No confirmed results for {board_date} yet — ask your "
+            "accountability buddy to confirm your count in Settings."
+        )
     else:
-        text_lines = [f"🏆 *Today's Top Studiers ({today_str}):*", ""]
+        text_lines = [f"🏆 *Buddy-Confirmed Leaderboard ({board_date}):*", ""]
         for rank, row in enumerate(rows, start=1):
             medal = {1: '🥇', 2: '🥈', 3: '🥉'}.get(rank, f"{rank}.")
-            text_lines.append(f"{medal} *{row['display_name']}* — {row['done']} logged")
+            text_lines.append(
+                f"{medal} *{row['display_name']}* — {row['confirmed_done']} confirmed "
+                f"(streak {row['streak']})"
+            )
         text = "\n".join(text_lines)
 
     # Include a Home button
