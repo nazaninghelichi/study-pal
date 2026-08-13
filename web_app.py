@@ -100,17 +100,22 @@ def demo_login():
 def debug_net_check():
     import socket
     results = {}
-    try:
-        results["dns"] = [str(i) for i in socket.getaddrinfo("smtp.gmail.com", 587)]
-    except Exception as e:
-        results["dns"] = f"FAILED: {e!r}"
-    for port in (587, 465):
+    results["proxy_env"] = {
+        k: os.environ[k] for k in os.environ
+        if "PROXY" in k.upper() or "PRIVATE" in k.upper()
+    }
+    for host, port in [("smtp.gmail.com", 587), ("smtp.gmail.com", 465), ("api.telegram.org", 443), ("8.8.8.8", 443)]:
         try:
-            s = socket.create_connection(("smtp.gmail.com", port), timeout=5)
+            s = socket.create_connection((host, port), timeout=5)
             s.close()
-            results[f"connect_{port}"] = "OK"
+            results[f"raw_connect_{host}_{port}"] = "OK"
         except Exception as e:
-            results[f"connect_{port}"] = f"FAILED: {e!r}"
+            results[f"raw_connect_{host}_{port}"] = f"FAILED: {e!r}"
+    try:
+        r = requests.get("https://api.telegram.org", timeout=8)
+        results["requests_lib_https"] = f"OK status={r.status_code}"
+    except Exception as e:
+        results["requests_lib_https"] = f"FAILED: {e!r}"
     return results
 
 
