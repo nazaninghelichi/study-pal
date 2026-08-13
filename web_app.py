@@ -96,6 +96,24 @@ def demo_login():
     return redirect(url_for("dashboard"))
 
 
+@app.route("/debug/net-check")
+def debug_net_check():
+    import socket
+    results = {}
+    try:
+        results["dns"] = [str(i) for i in socket.getaddrinfo("smtp.gmail.com", 587)]
+    except Exception as e:
+        results["dns"] = f"FAILED: {e!r}"
+    for port in (587, 465):
+        try:
+            s = socket.create_connection(("smtp.gmail.com", port), timeout=5)
+            s.close()
+            results[f"connect_{port}"] = "OK"
+        except Exception as e:
+            results[f"connect_{port}"] = f"FAILED: {e!r}"
+    return results
+
+
 @app.route("/login", methods=["POST"])
 def login():
     email = request.form.get("email", "").strip().lower()
