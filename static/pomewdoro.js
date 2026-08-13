@@ -5,33 +5,12 @@ window.Pomewdoro = (function () {
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
 
-  function randomSprite(catTypes) {
-    return catTypes[Math.floor(Math.random() * catTypes.length)];
-  }
-
-  function appendLandedCat(landedZone, sprite) {
-    if (!landedZone) return;
-    var img = document.createElement('img');
-    img.src = '/static/named_cats/' + sprite + '.png';
-    img.className = 'landed-cat';
-    landedZone.appendChild(img);
-  }
-
-  function dropCat(skyZone, landedZone, catTypes) {
-    if (!skyZone) return;
-    var sprite = randomSprite(catTypes);
-    var img = document.createElement('img');
-    img.src = '/static/named_cats/' + sprite + '.png';
-    img.className = 'falling-cat';
-    img.style.left = (8 + Math.random() * 78) + '%';
-    img.style.setProperty('--land-rot', (Math.random() * 16 - 8) + 'deg');
-    img.style.animationDuration = (1.1 + Math.random() * 0.5) + 's';
-    skyZone.appendChild(img);
-    // once it lands, remove it from the falling layer and add it permanently to the tray
-    img.addEventListener('animationend', function () {
-      img.remove();
-      appendLandedCat(landedZone, sprite);
-    });
+  function setPlayState(container, selector, state) {
+    if (!container) return;
+    var els = container.querySelectorAll(selector);
+    for (var i = 0; i < els.length; i++) {
+      els[i].style.animationPlayState = state;
+    }
   }
 
   var BURST_PARTICLE_COUNT = 18;
@@ -56,9 +35,12 @@ window.Pomewdoro = (function () {
       var dist = 70 + Math.random() * 110;
       p.style.setProperty('--fx', Math.cos(angle) * dist + 'px');
       p.style.setProperty('--fy', (Math.sin(angle) * dist - 40) + 'px');
-      var duration = 0.5 + Math.random() * 0.35; // under a second — that's the whole point
+      // fast pop-out, then a long gentle continued drift (see burst-fly keyframes)
+      // so it's exciting to arrive but stays catchable for several seconds
+      var duration = 4.2 + Math.random() * 0.4;
       p.style.animationDuration = duration + 's';
-      p.style.animationDelay = (Math.random() * 0.25) + 's';
+      p.style.animationDelay = (Math.random() * 0.8) + 's'; // staggered, not a single overwhelming clump
+      if (document.hidden) p.style.animationPlayState = 'paused';
 
       (function (particle) {
         particle.addEventListener('click', function () {
@@ -78,44 +60,65 @@ window.Pomewdoro = (function () {
   }
 
   function initTimer(opts) {
-    var catTypes = opts.catTypes || [];
     var remaining = opts.remainingSeconds;
     var totalSeconds = opts.durationMinutes * 60;
-    var lastDroppedMinute = Math.floor(opts.elapsedSeconds / 60);
 
     var readout = document.getElementById('pomo-readout');
-    var skyZone = document.getElementById('pomo-sky');
-    var landedZone = document.getElementById('pomo-landed');
-    var trayCount = document.getElementById('pomo-tray-count');
     var finishForm = document.getElementById('pomo-finish-form');
     var growWrap = document.getElementById('growcat-wrap');
     var growCat = document.getElementById('growcat');
-    var count = lastDroppedMinute;
-    if (trayCount) trayCount.textContent = count;
+    var pausedBadge = document.getElementById('pomo-paused-badge');
     if (readout) readout.textContent = formatTime(remaining);
 
-    // backfill the tray for minutes already earned before this page load (e.g. after a refresh)
-    for (var i = 0; i < count; i++) {
-      appendLandedCat(landedZone, randomSprite(catTypes));
+    // --- pause everything the moment the tab is hidden; tell the server how ---
+    // long we were away so its own elapsed-time math (what actually banks
+    // hearts and detects completion) excludes that time too, not just the display
+    var hiddenAt = null;
+
+    function reportPause(seconds) {
+      if (seconds <= 0) return;
+      var body = 'paused_seconds=' + encodeURIComponent(seconds);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          '/pomewdoro/pause-adjust',
+          new Blob([body], { type: 'application/x-www-form-urlencoded' })
+        );
+      } else {
+        fetch('/pomewdoro/pause-adjust', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body,
+          keepalive: true
+        });
+      }
     }
 
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+        if (growCat) growCat.style.animationPlayState = 'paused';
+        setPlayState(growWrap, '.burst-particle', 'paused');
+        if (pausedBadge) pausedBadge.hidden = false;
+      } else if (hiddenAt) {
+        var pausedSeconds = Math.round((Date.now() - hiddenAt) / 1000);
+        hiddenAt = null;
+        reportPause(pausedSeconds);
+        if (growCat) growCat.style.animationPlayState = 'running';
+        setPlayState(growWrap, '.burst-particle', 'running');
+        if (pausedBadge) pausedBadge.hidden = true;
+      }
+    });
+
     var interval = setInterval(function () {
+      if (document.hidden) return; // frozen — resumes exactly where it left off once visible again
+
       remaining -= 1;
       if (readout) readout.textContent = formatTime(Math.max(0, remaining));
-
-      var elapsedNow = totalSeconds - remaining;
-      var currentMinute = Math.floor(elapsedNow / 60);
-      if (opts.phase === 'focus' && currentMinute > lastDroppedMinute && currentMinute <= opts.durationMinutes) {
-        lastDroppedMinute = currentMinute;
-        count += 1;
-        if (trayCount) trayCount.textContent = count;
-        dropCat(skyZone, landedZone, catTypes);
-      }
 
       if (remaining <= 0) {
         clearInterval(interval);
         // the growth/burst payoff is exclusive to reaching 0:00 naturally —
-        // an early "Stop & Collect" submits pomo-finish-form directly and never hits this branch
+        // an early "Give Up" submits pomo-finish-form directly and never hits this branch
         if (opts.phase === 'focus' && growWrap && growCat) {
           var heartsInput = document.getElementById('pomo-hearts-caught');
           triggerBurst(growWrap, growCat, function (caught) {
@@ -123,7 +126,7 @@ window.Pomewdoro = (function () {
           });
           setTimeout(function () {
             if (finishForm) finishForm.submit();
-          }, 1500);
+          }, 5800); // covers the full staggered burst window (up to ~0.8s delay + ~4.6s flight)
         } else if (finishForm) {
           finishForm.submit();
         }

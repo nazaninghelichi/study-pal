@@ -5,6 +5,7 @@
 <div class="card">
   {% if state %}
     <div class="pomo-phase-label">{{ '🎯 Focus' if state.phase == 'focus' else '☕ Break' }}</div>
+    <div class="pomo-paused-badge" id="pomo-paused-badge" hidden>⏸ Paused — come back to keep going</div>
     <div class="digital-clock">
       <div class="readout" id="pomo-readout">--:--</div>
       <div class="dc-label">{{ state.duration_minutes }} min {{ state.phase }}</div>
@@ -15,20 +16,18 @@
       <img id="growcat" class="growcat" src="{{ url_for('static', filename='happycat.png') }}" alt="A very happy cat"
            style="animation-duration: {{ state.duration_minutes * 60 }}s; animation-delay: -{{ state.elapsed_seconds | round(0, 'floor') | int }}s;">
     </div>
-    <div class="pomo-sky" id="pomo-sky"></div>
-    <div class="pomo-tray">🐱 <span id="pomo-tray-count">0</span> collected this session</div>
-    <div class="pomo-landed" id="pomo-landed"></div>
+    <p class="muted" style="text-align:center;">Stick with it — finishing the full session bursts into hearts you can catch.</p>
     {% else %}
-    <p class="muted" style="text-align:center;">Cats take a break too. Back to focus when you're ready.</p>
+    <p class="muted" style="text-align:center;">Rest up. Back to focus when you're ready.</p>
     {% endif %}
 
     <form id="pomo-finish-form" method="post" action="{{ url_for('pomewdoro_finish_route') }}" class="pomo-actions">
       <input type="hidden" name="hearts_caught" id="pomo-hearts-caught" value="0">
-      <button type="submit" class="secondary">{{ 'Stop & Collect' if state.phase == 'focus' else 'Skip Break' }}</button>
+      <button type="submit" class="secondary">{{ 'Give Up' if state.phase == 'focus' else 'Skip Break' }}</button>
     </form>
   {% else %}
     <div class="pomo-phase-label">🎯 Ready to focus?</div>
-    <p class="muted">{{ focus_minutes }} minutes of focus. A cat drops from the sky every minute you stick with it. Collect them all in your <a href="{{ url_for('collection_route') }}">lifetime collection</a>.</p>
+    <p class="muted">{{ focus_minutes }} minutes of focus. Finish the whole session and catch the hearts it bursts into — spend them on repairing a streak or sending to a friend. Ask your accountability buddy for cat stickers in your nightly report — check your <a href="{{ url_for('collection_route') }}">collection</a>.</p>
     <form method="post" action="{{ url_for('pomewdoro_start_route') }}" class="pomo-actions">
       <button type="submit" class="primary">Start Focus Session</button>
     </form>
@@ -44,8 +43,7 @@
     phase: "{{ state.phase }}",
     remainingSeconds: {{ state.remaining_seconds | round(0, 'floor') | int }},
     durationMinutes: {{ state.duration_minutes }},
-    elapsedSeconds: {{ state.elapsed_seconds | round(0, 'floor') | int }},
-    catTypes: {{ cat_types | tojson }}
+    elapsedSeconds: {{ state.elapsed_seconds | round(0, 'floor') | int }}
   });
 </script>
 {% endif %}

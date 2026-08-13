@@ -29,7 +29,7 @@ def send_magic_link(email: str, link: str) -> None:
         server.send_message(msg)
 
 
-def send_progress_report(buddy_email: str, summary: dict) -> None:
+def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None = None) -> None:
     """Nightly accountability-buddy email. Same dev-mode fallback as send_magic_link."""
     name = summary["display_name"]
     goal, done, streak = summary["goal"], summary["done"], summary["streak"]
@@ -40,8 +40,10 @@ def send_progress_report(buddy_email: str, summary: dict) -> None:
         f"Here's {name}'s progress on Mathoclock today:\n\n"
         f"  Goal: {done}/{goal} problems ({pct}%)\n"
         f"  Current streak: {streak} day{'s' if streak != 1 else ''}\n\n"
-        f"You're getting this because {name} added you as their accountability buddy."
     )
+    if gift_url:
+        body += f"🎁 Pick a sticker for {name}: {gift_url}\n\n"
+    body += f"You're getting this because {name} added you as their accountability buddy."
 
     if not SMTP_HOST:
         logger.warning("[DEV MODE] no SMTP_HOST set — progress report for %s to %s:\n%s", name, buddy_email, body)

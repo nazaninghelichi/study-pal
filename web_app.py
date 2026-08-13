@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import random
 import re
 import secrets
 from datetime import date, datetime, timedelta
@@ -13,12 +12,14 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from db import (
     add_cats,
     add_hearts,
+    consume_gift_token,
     consume_link_code,
     consume_magic_link,
     create_link_code,
     create_magic_link,
     get_buddy_email,
     get_collection,
+    get_gift_token_recipient,
     get_full_leaderboard,
     get_hearts_balance,
     get_history,
@@ -473,6 +474,12 @@ CAT_ROSTER = {
 }
 CAT_TYPES = list(CAT_ROSTER.keys())
 
+# Placeholder for the future paid tier — no payment processing wired up yet, so
+# these are inert/disabled on the gift-picker page rather than purchasable.
+PREMIUM_CATALOG = {
+    "premium_star": "Golden Star",
+}
+
 
 def _pomo_state():
     """Reads the active phase from the session and computes real elapsed/remaining time
@@ -493,20 +500,13 @@ def _pomo_state():
 
 
 def _finish_pomo(user_id):
-    """Banks cats for a completed/interrupted focus phase, clears session state, and
-    auto-starts a break only if the focus block ran to full completion."""
+    """Clears session state for a completed/interrupted focus or break phase, and
+    auto-starts a break only if the focus block ran to full completion. Cats are no
+    longer earned here — they're gifted by an accountability buddy via the nightly
+    report instead (see gift_tokens)."""
     state = _pomo_state()
     if not state:
         return None
-
-    earned = {}
-    if state["phase"] == "focus":
-        elapsed_minutes = int(state["elapsed_seconds"] // 60)
-        for _ in range(elapsed_minutes):
-            cat_type = random.choice(CAT_TYPES)
-            earned[cat_type] = earned.get(cat_type, 0) + 1
-        for cat_type, n in earned.items():
-            run_async(add_cats(user_id, cat_type, n))
 
     completed_fully = state["elapsed_seconds"] >= state["duration_minutes"] * 60 - 1
     phase = state["phase"]
@@ -521,7 +521,7 @@ def _finish_pomo(user_id):
         session["pomo_start"] = datetime.utcnow().isoformat()
         session["pomo_duration"] = BREAK_MINUTES
 
-    return {"phase": phase, "earned": earned, "started_break": started_break, "completed_fully": completed_fully}
+    return {"phase": phase, "started_break": started_break, "completed_fully": completed_fully}
 
 
 @app.route("/pomewdoro")
@@ -534,7 +534,7 @@ def pomewdoro_route():
         state = _pomo_state()
     return render_template(
         "pomewdoro.html",
-        state=state, focus_minutes=FOCUS_MINUTES, break_minutes=BREAK_MINUTES, cat_types=CAT_TYPES,
+        state=state, focus_minutes=FOCUS_MINUTES, break_minutes=BREAK_MINUTES,
     )
 
 
@@ -547,14 +547,39 @@ def pomewdoro_start_route():
     return redirect(url_for("pomewdoro_route"))
 
 
+@app.route("/pomewdoro/pause-adjust", methods=["POST"])
+@login_required
+def pomewdoro_pause_adjust_route():
+    """Called when the tab regains focus after being hidden. Pushes pomo_start
+    forward by the reported away-duration, so the server's own elapsed-time
+    calculation — the one actually used to bank cats/hearts and detect
+    completion — genuinely excludes time spent off the tab, not just the
+    on-screen countdown. Leaving the tab open in the background no longer
+    counts as focus time."""
+    start_iso = session.get("pomo_start")
+    if not start_iso:
+        return ("", 204)
+    try:
+        paused_seconds = float(request.form.get("paused_seconds", 0))
+    except ValueError:
+        paused_seconds = 0
+
+    start = datetime.fromisoformat(start_iso)
+    # never push pomo_start past "now" — bound by real elapsed time, not just an
+    # arbitrary ceiling, so a bad/garbage report can't send elapsed_seconds negative
+    real_elapsed = max(0.0, (datetime.utcnow() - start).total_seconds())
+    paused_seconds = max(0.0, min(paused_seconds, real_elapsed, 3600.0))
+
+    if paused_seconds > 0:
+        session["pomo_start"] = (start + timedelta(seconds=paused_seconds)).isoformat()
+    return ("", 204)
+
+
 @app.route("/pomewdoro/finish", methods=["POST"])
 @login_required
 def pomewdoro_finish_route():
     user_id = session["user_id"]
     result = _finish_pomo(user_id)
-    if result and result["earned"]:
-        total = sum(result["earned"].values())
-        flash(f"Collected {total} cat{'s' if total != 1 else ''}! 🐱")
 
     # hearts_caught is only meaningful — and only ever sent by the client — when a
     # full focus session just completed and the burst actually fired. Anything else
@@ -583,6 +608,33 @@ def collection_route():
     return render_template(
         "collection.html", counts=counts, found=found, total=sum(counts.values()), roster=CAT_ROSTER
     )
+
+
+# ---- gifting: public, no-login pages a buddy reaches from the nightly report ----
+
+@app.route("/gift/<token>")
+def gift_picker_route(token):
+    recipient_id = run_async(get_gift_token_recipient(token))
+    if recipient_id is None:
+        return render_template("gift_invalid.html"), 404
+    name = run_async(_get_display_name(recipient_id))
+    return render_template("gift_picker.html", token=token, name=name, roster=CAT_ROSTER, premium=PREMIUM_CATALOG)
+
+
+@app.route("/gift/<token>/award", methods=["POST"])
+def gift_award_route(token):
+    cat_type = request.form.get("cat_type", "")
+    if cat_type not in CAT_ROSTER:
+        flash("That sticker isn't available.")
+        return redirect(url_for("gift_picker_route", token=token))
+
+    recipient_id = run_async(consume_gift_token(token))
+    if recipient_id is None:
+        return render_template("gift_invalid.html"), 404
+
+    run_async(add_cats(recipient_id, cat_type, 1))
+    name = run_async(_get_display_name(recipient_id))
+    return render_template("gift_sent.html", name=name, cat_name=CAT_ROSTER[cat_type])
 
 
 # Runs on import so schema creation happens under gunicorn too, not just `python web_app.py`.

@@ -280,8 +280,15 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .send-hearts-form { display: flex; gap: 0.3rem; align-items: center; }
 .send-hearts-input {
-  width: 42px; padding: 0.25rem 0.3rem; font-size: 0.78rem;
+  width: 44px; padding: 0.3rem 0.25rem; font-size: 0.85rem; text-align: center;
   border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.send-hearts-input::-webkit-outer-spin-button,
+.send-hearts-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .send-hearts-btn { padding: 0.25rem 0.45rem; font-size: 0.82rem; border-radius: 6px; }
 
@@ -437,43 +444,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ---- pomewdoro ---- */
 .pomo-phase-label { text-align: center; font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+.pomo-paused-badge {
+  text-align: center; font-size: 0.78rem; color: var(--rust-ink); background: var(--rust);
+  border-radius: 100px; padding: 0.3rem 0.8rem; margin: 0 auto 0.6rem; width: fit-content;
+}
 .pomo-actions { margin-top: 1.1rem; text-align: center; }
-
-.pomo-sky {
-  position: relative;
-  height: 160px;
-  margin-top: 1rem;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.08), transparent);
-  overflow: hidden;
-}
-@keyframes cat-fall {
-  0% { top: -60px; opacity: 0; transform: rotate(-6deg); }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: calc(100% - 52px); opacity: 1; transform: rotate(var(--land-rot, 4deg)); }
-}
-.falling-cat {
-  position: absolute;
-  width: 52px;
-  height: auto;
-  animation-name: cat-fall;
-  animation-timing-function: ease-in;
-  animation-fill-mode: forwards;
-}
-@media (prefers-reduced-motion: reduce) {
-  .falling-cat { animation: none; top: calc(100% - 52px); }
-}
-
-.pomo-tray {
-  text-align: center; margin-top: 0.7rem; font-size: 0.9rem; color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-.pomo-landed {
-  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
-  margin-top: 0.7rem; min-height: 32px;
-}
-.landed-cat { width: 30px; height: auto; }
 
 /* ---- pomewdoro: growing cat + completion burst ---- */
 .growcat-wrap {
@@ -508,10 +483,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   position: absolute;
   left: 50%;
   bottom: 20px;
-  font-size: 1.5rem;
-  padding: 10px;
-  margin: -10px;
-  animation: burst-fly linear forwards;
+  font-size: 1.7rem;
+  padding: 14px;
+  margin: -14px;
+  animation: burst-fly ease-out forwards;
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
@@ -520,8 +495,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border: none;
 }
 @keyframes burst-fly {
-  0% { transform: translate(-50%, 0) scale(0.4); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--fx, 0px)), var(--fy, -80px)) scale(1.1); opacity: 0; }
+  /* fast pop out (0-15%), then a long gentle continued float/drift — always
+     moving, never frozen — before a quick fade right at the very end */
+  0%   { transform: translate(-50%, 0) scale(0.4); opacity: 1; }
+  15%  { transform: translate(calc(-50% + var(--fx, 0px) * 0.6), calc(var(--fy, -80px) * 0.6)) scale(1.2); opacity: 1; }
+  45%  { transform: translate(calc(-50% + var(--fx, 0px) * 0.85), calc(var(--fy, -80px) * 1.0)) scale(1.1); opacity: 1; }
+  75%  { transform: translate(calc(-50% + var(--fx, 0px) * 1.05), calc(var(--fy, -80px) * 1.25)) scale(1.05); opacity: 1; }
+  92%  { transform: translate(calc(-50% + var(--fx, 0px) * 1.2), calc(var(--fy, -80px) * 1.4)) scale(0.95); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--fx, 0px) * 1.25), calc(var(--fy, -80px) * 1.45)) scale(0.85); opacity: 0; }
 }
 .burst-particle.caught {
   animation: burst-caught 0.3s ease-out forwards !important;
@@ -562,3 +543,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .collection-item .cat-locked { font-size: 1.8rem; margin-bottom: 0.4rem; }
 .collection-item .cat-name { font-size: 0.78rem; color: var(--ink); }
 .collection-item .cat-count { font-size: 0.72rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+/* ---- gift picker (public, no-login) ---- */
+.gift-card {
+  display: flex; flex-direction: column; align-items: center; width: 100%;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  padding: 0.8rem; text-align: center; cursor: pointer; font-family: inherit;
+}
+.gift-card:hover { border-color: var(--accent); }
+.gift-card img { width: 64px; height: auto; margin-bottom: 0.4rem; }
+.gift-card .cat-name { font-size: 0.78rem; color: var(--ink); }
+.gift-card-premium {
+  opacity: 0.55; cursor: not-allowed; border-style: dashed;
+}
+.gift-card-premium:hover { border-color: var(--line); }
+.gift-card-premium .premium-icon { font-size: 1.8rem; margin-bottom: 0.4rem; }
+.gift-card-premium .premium-tag {
+  font-size: 0.68rem; color: var(--ink-soft); margin-top: 0.2rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}

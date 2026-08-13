@@ -146,7 +146,8 @@ async def init_db_pg():
         """
     )
 
-    # cat_collection: lifetime Pomewdoro cat counts per user, per cat type
+    # cat_collection: lifetime sticker counts per user, per cat type — now gifted
+    # by an accountability buddy rather than earned in Pomewdoro
     await conn.execute(
         """
         CREATE TABLE IF NOT EXISTS cat_collection (
@@ -154,6 +155,20 @@ async def init_db_pg():
           cat_type TEXT NOT NULL,
           count    INTEGER NOT NULL DEFAULT 0,
           PRIMARY KEY (user_id, cat_type)
+        );
+        """
+    )
+
+    # gift_tokens: single-use, expiring tokens issued in the nightly buddy report,
+    # letting a buddy (who has no account) pick a sticker for their student
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gift_tokens (
+          token      TEXT PRIMARY KEY,
+          user_id    BIGINT NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          used       BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
     )
@@ -651,3 +666,45 @@ async def get_daily_summary(user_id: int) -> dict:
         "done": today_row["done"] if today_row else 0,
         "streak": await get_streak(user_id),
     }
+
+
+async def create_gift_token(user_id: int, hours_valid: int = 48) -> str:
+    """Issued in the nightly buddy report — the buddy has no account, so this
+    token is how a single email link authenticates the gift-picker page."""
+    token = secrets.token_urlsafe(24)
+    expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO gift_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)",
+        token, user_id, expires_at
+    )
+    await conn.close()
+    return token
+
+
+async def get_gift_token_recipient(token: str) -> int | None:
+    """Validates without consuming — used to render the picker page itself,
+    which a buddy should be able to load and browse before committing to a gift."""
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT user_id, expires_at, used FROM gift_tokens WHERE token = $1", token
+    )
+    await conn.close()
+    if not row or row["used"] or row["expires_at"] < datetime.utcnow():
+        return None
+    return row["user_id"]
+
+
+async def consume_gift_token(token: str) -> int | None:
+    """Validates and burns the token in one step — used only when a sticker is
+    actually awarded, so viewing the picker page never spends the one gift."""
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT user_id, expires_at, used FROM gift_tokens WHERE token = $1", token
+    )
+    if not row or row["used"] or row["expires_at"] < datetime.utcnow():
+        await conn.close()
+        return None
+    await conn.execute("UPDATE gift_tokens SET used = TRUE WHERE token = $1", token)
+    await conn.close()
+    return row["user_id"]
