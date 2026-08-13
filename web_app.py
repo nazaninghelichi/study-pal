@@ -19,8 +19,9 @@ from db import (
     create_magic_link,
     get_buddy_email,
     get_collection,
-    get_gift_token_recipient,
-    get_full_leaderboard,
+    get_confirmed_leaderboard,
+    get_confirmed_progress,
+    get_gift_token_info,
     get_hearts_balance,
     get_history,
     get_link_status,
@@ -30,6 +31,7 @@ from db import (
     get_repairable_date,
     get_streak,
     init_db_pg,
+    save_confirmed_progress,
     save_streak_date,
     set_buddy_email,
     set_reminders_enabled,
@@ -155,6 +157,18 @@ async def _get_today(user_id):
     )
     await conn.close()
     return goal, 0
+
+
+async def _get_day_track(user_id, date_str):
+    """Read-only lookup of a specific past date's self-reported numbers —
+    unlike _get_today, never creates a row. Used by the buddy confirm step,
+    where the date being reviewed isn't necessarily today."""
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT goal, done FROM daily_track WHERE user_id=$1 AND date=$2", user_id, date_str
+    )
+    await conn.close()
+    return (row["goal"], row["done"]) if row else (0, 0)
 
 
 async def _set_goal(user_id, new_goal):
@@ -302,9 +316,10 @@ def log_route():
 @login_required
 def leaderboard_route():
     user_id = session["user_id"]
-    rows = run_async(get_full_leaderboard())
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    rows = run_async(get_confirmed_leaderboard(yesterday))
     return render_template(
-        "leaderboard.html", rows=rows, my_user_id=user_id,
+        "leaderboard.html", rows=rows, my_user_id=user_id, board_date=yesterday,
         hearts_balance=run_async(get_hearts_balance(user_id)),
     )
 
@@ -614,11 +629,44 @@ def collection_route():
 
 @app.route("/gift/<token>")
 def gift_picker_route(token):
-    recipient_id = run_async(get_gift_token_recipient(token))
-    if recipient_id is None:
+    info = run_async(get_gift_token_info(token))
+    if info is None:
         return render_template("gift_invalid.html"), 404
+    recipient_id, report_date = info["user_id"], info["report_date"]
     name = run_async(_get_display_name(recipient_id))
-    return render_template("gift_picker.html", token=token, name=name, roster=CAT_ROSTER, premium=PREMIUM_CATALOG)
+
+    confirmed = run_async(get_confirmed_progress(recipient_id, report_date)) if report_date else None
+    if confirmed is None:
+        # step 1: must confirm the real count before a sticker can be picked
+        _, reported_done = run_async(_get_day_track(recipient_id, report_date)) if report_date else (0, 0)
+        return render_template(
+            "gift_confirm.html", token=token, name=name, reported_done=reported_done, report_date=report_date
+        )
+
+    # step 2: already confirmed — show the sticker picker
+    return render_template(
+        "gift_picker.html", token=token, name=name, confirmed_done=confirmed,
+        roster=CAT_ROSTER, premium=PREMIUM_CATALOG,
+    )
+
+
+@app.route("/gift/<token>/confirm", methods=["POST"])
+def gift_confirm_route(token):
+    info = run_async(get_gift_token_info(token))
+    if info is None:
+        return render_template("gift_invalid.html"), 404
+    recipient_id, report_date = info["user_id"], info["report_date"]
+    if not report_date:
+        return render_template("gift_invalid.html"), 404
+
+    try:
+        confirmed_done = max(0, int(request.form.get("confirmed_done", 0)))
+    except ValueError:
+        flash("Enter a valid number.")
+        return redirect(url_for("gift_picker_route", token=token))
+
+    run_async(save_confirmed_progress(recipient_id, report_date, confirmed_done))
+    return redirect(url_for("gift_picker_route", token=token))
 
 
 @app.route("/gift/<token>/award", methods=["POST"])

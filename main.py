@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # === Keyboards ===
-HOME_KB = ReplyKeyboardMarkup([['\ud83c\udfe0 Home']], resize_keyboard=True)
+HOME_KB = ReplyKeyboardMarkup([['🏠 Home']], resize_keyboard=True)
 
 # === Core Handlers ===
 async def wrapup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,7 +81,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ], resize_keyboard=True)
 
     await update.message.reply_text(
-        f"\ud83d\udc4b Welcome back, {display_name}!\n\nHere\u2019s what you can do:\n"
+        f"👋 Welcome back, {display_name}!\n\nHere\u2019s what you can do:\n"
         "\u2022 `/logstudies` — Log your applications\n"
         "\u2022 `/setgoal` — Set or change your daily goal\n"
         "\u2022 `/leaderboard` — See today’s top studiers\n"
@@ -94,18 +94,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "\u2753 *Help*\nUse /settings to view options, or tap \ud83c\udfe0 Home to return to main menu.",
+        "\u2753 *Help*\nUse /settings to view options, or tap 🏠 Home to return to main menu.",
         reply_markup=HOME_KB,
         parse_mode="Markdown"
     )
 
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "\ud83d\udcac *About This Bot*\n\n"
+        "💬 *About This Bot*\n\n"
         "I’m also studying hard right now, so I understand how frustrating it can feel.\n\n"
         "This bot helps us track progress and stay consistent — in a fun, supportive way.\n\n"
-        "Wishing *you* (and *me*) the best of luck! \ud83c\udf40\n\n"
-        "\ud83d\udce9 Feedback: calpal.agent@gmail.com",
+        "Wishing *you* (and *me*) the best of luck! 🍀\n\n"
+        "📩 Feedback: calpal.agent@gmail.com",
         reply_markup=HOME_KB,
         parse_mode="Markdown"
     )
@@ -114,7 +114,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings_kb = ReplyKeyboardMarkup([
         ['/setname', '/reminders'],
         ['/about', '/help'],
-        ['\ud83c\udfe0 Home']
+        ['🏠 Home']
     ], resize_keyboard=True)
     await update.message.reply_text(
         "\u2699\ufe0f *Settings*\n\n"
@@ -129,20 +129,20 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await leaderboard_actual(update, context)
     await update.message.reply_text(
-        "\ud83c\udfe0 Tap Home to return to the main menu.",
+        "🏠 Tap Home to return to the main menu.",
         reply_markup=HOME_KB
     )
 
 async def progress_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await progress(update, context)
     await update.message.reply_text(
-        "\ud83c\udfe0 Tap Home to return to the main menu.",
+        "🏠 Tap Home to return to the main menu.",
         reply_markup=HOME_KB
     )
 
 async def toggle_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.callback_query.from_user.id if update.callback_query else update.effective_user.id
-    logger.info(f"\ud83d\udd14 toggle_reminders triggered by user {user_id!r}, callback={bool(update.callback_query)}")
+    logger.info(f"🔔 toggle_reminders triggered by user {user_id!r}, callback={bool(update.callback_query)}")
     if update.callback_query:
         await update.callback_query.answer()
 
@@ -161,7 +161,7 @@ async def toggle_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     status = "ON" if new_state else "OFF"
     text = (
-        f"\ud83d\udd14 Reminders are now *{status}*. I will send you reminders at 09:00, 15:00, and 21:00 daily."
+        f"🔔 Reminders are now *{status}*. I will send you reminders at 09:00, 15:00, and 21:00 daily."
     )
     btn_label = "Turn OFF" if new_state else "Turn ON"
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(btn_label, callback_data="toggle_reminders")]])
@@ -187,13 +187,13 @@ async def testdb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === Bot Setup and Run ===
 if __name__ == "__main__":
-    logger.info("\ud83d\udd25 Running Study-Pal…")
+    logger.info("🔥 Running Study-Pal…")
     asyncio.get_event_loop().run_until_complete(init_db_pg())
 
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     # Register handlers
-    app.add_handler(MessageHandler(filters.Regex(r"^\ud83c\udfe0 Home$"), start))
+    app.add_handler(MessageHandler(filters.Regex(r"^🏠 Home$"), start))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CommandHandler("reminders", toggle_reminders))
@@ -240,10 +240,10 @@ if __name__ == "__main__":
     # Telegram and web users regardless, since it reads straight from Postgres.
     scheduler = AsyncIOScheduler(timezone=ZoneInfo("America/Toronto"))
     scheduler.add_job(lambda: asyncio.create_task(run_daily_wrapup()), trigger="cron", hour=22, minute=0)
-    scheduler.add_job(lambda: asyncio.create_task(send_buddy_reports()), trigger="cron", hour=22, minute=5)
+    scheduler.add_job(lambda: asyncio.create_task(send_buddy_reports()), trigger="cron", hour=20, minute=0)
     scheduler.start()
 
-    logger.info("\ud83e\udd16 Study-Pal is live! Press Ctrl+C to stop.")
+    logger.info("🤖 Study-Pal is live! Press Ctrl+C to stop.")
     app.run_polling(drop_pending_updates=True)
 
     # Fake user seed

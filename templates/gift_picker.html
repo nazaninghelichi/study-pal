@@ -4,7 +4,7 @@
 
 <div class="card">
   <h1>🎁 Pick a sticker for {{ name }}</h1>
-  <p class="muted">Choose a free cat to send straight to {{ name }}'s collection.</p>
+  <p class="muted">✅ Confirmed: {{ confirmed_done }} problem{{ 's' if confirmed_done != 1 else '' }}. Choose a free cat to send straight to {{ name }}'s collection.</p>
 
   <div class="collection-grid">
     {% for slug, cat_name in roster.items() %}

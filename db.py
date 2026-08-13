@@ -160,15 +160,35 @@ async def init_db_pg():
     )
 
     # gift_tokens: single-use, expiring tokens issued in the nightly buddy report,
-    # letting a buddy (who has no account) pick a sticker for their student
+    # letting a buddy (who has no account) confirm the day's count and pick a
+    # sticker for their student. report_date ties the token to the specific day
+    # it's reporting on, so a confirmation lands on the right leaderboard date.
     await conn.execute(
         """
         CREATE TABLE IF NOT EXISTS gift_tokens (
-          token      TEXT PRIMARY KEY,
-          user_id    BIGINT NOT NULL,
-          expires_at TIMESTAMP NOT NULL,
-          used       BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          token       TEXT PRIMARY KEY,
+          user_id     BIGINT NOT NULL,
+          report_date TEXT,
+          expires_at  TIMESTAMP NOT NULL,
+          used        BOOLEAN DEFAULT FALSE,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    await conn.execute("ALTER TABLE gift_tokens ADD COLUMN IF NOT EXISTS report_date TEXT;")
+
+    # confirmed_progress: the buddy-verified problem count for a given day —
+    # distinct from daily_track.done (self-reported). Only a confirmed row makes
+    # a student eligible for the leaderboard; no buddy means no confirmation,
+    # which means no ranking, automatically.
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS confirmed_progress (
+          user_id        BIGINT NOT NULL,
+          date           TEXT NOT NULL,
+          confirmed_done INTEGER NOT NULL,
+          confirmed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id, date)
         );
         """
     )
@@ -421,87 +441,6 @@ async def get_repairable_date(user_id: int) -> str | None:
     return None
 
 
-async def get_full_leaderboard(limit: int = 10) -> list[dict]:
-    """
-    Ranks every user (Telegram + web) by current streak, then all-time total.
-    Linked accounts (see account_links) are merged into a single row: totals
-    are summed and the streak counts a day if EITHER surface hit its goal.
-    """
-    conn = await get_pg_conn()
-
-    id_rows = await conn.fetch("SELECT DISTINCT user_id FROM daily_track")
-    all_ids = [r["user_id"] for r in id_rows]
-
-    link_rows = await conn.fetch("SELECT web_user_id, telegram_user_id FROM account_links")
-    canonical = {r["telegram_user_id"]: r["web_user_id"] for r in link_rows}
-
-    groups: dict[int, list[int]] = {}
-    for uid in all_ids:
-        cid = canonical.get(uid, uid)
-        groups.setdefault(cid, []).append(uid)
-    # a linked web account with no daily_track rows of its own still needs its id in the group
-    for cid in groups:
-        if cid not in groups[cid]:
-            groups[cid].append(cid)
-
-    today = date.today()
-    results = []
-
-    for cid, member_ids in groups.items():
-        total_row = await conn.fetchrow(
-            "SELECT COALESCE(SUM(done), 0) AS total FROM daily_track WHERE user_id = ANY($1::BIGINT[])",
-            member_ids
-        )
-        total = total_row["total"]
-
-        saved_rows = await conn.fetch(
-            "SELECT date FROM streak_saves WHERE user_id = ANY($1::BIGINT[])", member_ids
-        )
-        saved_dates = {r["date"] for r in saved_rows}
-
-        async def group_day_counts(d, member_ids=member_ids, saved_dates=saved_dates):
-            d_str = d.isoformat()
-            day_row = await conn.fetchrow(
-                "SELECT COALESCE(SUM(done), 0) AS done, COALESCE(SUM(goal), 0) AS goal "
-                "FROM daily_track WHERE user_id = ANY($1::BIGINT[]) AND date = $2",
-                member_ids, d_str
-            )
-            return bool(day_row["goal"] and day_row["done"] >= day_row["goal"]) or d_str in saved_dates
-
-        streak = 0
-        # today only anchors the walk if it already counts — otherwise it's still in
-        # progress and shouldn't zero out an existing streak just for not being done yet
-        d = today if await group_day_counts(today) else today - timedelta(days=1)
-        for _ in range(365):  # safety bound — no one has a 365-day streak yet
-            if await group_day_counts(d):
-                streak += 1
-                d -= timedelta(days=1)
-            else:
-                break
-
-        display_name = None
-        for candidate_id in [cid] + member_ids:
-            nr = await conn.fetchrow(
-                "SELECT COALESCE(NULLIF(username, ''), first_name) AS display_name FROM users WHERE user_id = $1",
-                candidate_id
-            )
-            if nr and nr["display_name"]:
-                display_name = nr["display_name"]
-                break
-
-        results.append({
-            "user_id": cid,
-            "member_ids": member_ids,
-            "display_name": display_name or "someone",
-            "streak": streak,
-            "total": total,
-        })
-
-    await conn.close()
-    results.sort(key=lambda r: (-r["streak"], -r["total"]))
-    return results[:limit]
-
-
 async def get_history(user_id: int, days: int = 182) -> list[dict]:
     """Daily goal/done for a rolling window, oldest first — feeds the contribution heatmap."""
     conn = await get_pg_conn()
@@ -668,31 +607,32 @@ async def get_daily_summary(user_id: int) -> dict:
     }
 
 
-async def create_gift_token(user_id: int, hours_valid: int = 48) -> str:
+async def create_gift_token(user_id: int, report_date: str, hours_valid: int = 48) -> str:
     """Issued in the nightly buddy report — the buddy has no account, so this
-    token is how a single email link authenticates the gift-picker page."""
+    token is how a single email link authenticates the gift-picker page.
+    report_date ties it to the specific day being confirmed."""
     token = secrets.token_urlsafe(24)
     expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
     conn = await get_pg_conn()
     await conn.execute(
-        "INSERT INTO gift_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)",
-        token, user_id, expires_at
+        "INSERT INTO gift_tokens (token, user_id, report_date, expires_at) VALUES ($1, $2, $3, $4)",
+        token, user_id, report_date, expires_at
     )
     await conn.close()
     return token
 
 
-async def get_gift_token_recipient(token: str) -> int | None:
+async def get_gift_token_info(token: str) -> dict | None:
     """Validates without consuming — used to render the picker page itself,
     which a buddy should be able to load and browse before committing to a gift."""
     conn = await get_pg_conn()
     row = await conn.fetchrow(
-        "SELECT user_id, expires_at, used FROM gift_tokens WHERE token = $1", token
+        "SELECT user_id, report_date, expires_at, used FROM gift_tokens WHERE token = $1", token
     )
     await conn.close()
     if not row or row["used"] or row["expires_at"] < datetime.utcnow():
         return None
-    return row["user_id"]
+    return {"user_id": row["user_id"], "report_date": row["report_date"]}
 
 
 async def consume_gift_token(token: str) -> int | None:
@@ -708,3 +648,54 @@ async def consume_gift_token(token: str) -> int | None:
     await conn.execute("UPDATE gift_tokens SET used = TRUE WHERE token = $1", token)
     await conn.close()
     return row["user_id"]
+
+
+async def save_confirmed_progress(user_id: int, date_str: str, confirmed_done: int) -> None:
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO confirmed_progress (user_id, date, confirmed_done) VALUES ($1, $2, $3) "
+        "ON CONFLICT (user_id, date) DO UPDATE SET confirmed_done = EXCLUDED.confirmed_done, "
+        "confirmed_at = CURRENT_TIMESTAMP",
+        user_id, date_str, confirmed_done
+    )
+    await conn.close()
+
+
+async def get_confirmed_progress(user_id: int, date_str: str) -> int | None:
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT confirmed_done FROM confirmed_progress WHERE user_id = $1 AND date = $2",
+        user_id, date_str
+    )
+    await conn.close()
+    return row["confirmed_done"] if row else None
+
+
+async def get_confirmed_leaderboard(target_date: str, limit: int = 10) -> list[dict]:
+    """Ranks students by their buddy-confirmed count for one specific day. Only
+    students with a confirmed row for that date appear at all — no buddy (or a
+    buddy who hasn't confirmed yet) means no ranking, not a zero."""
+    conn = await get_pg_conn()
+    rows = await conn.fetch(
+        """
+        SELECT cp.user_id, cp.confirmed_done,
+               COALESCE(NULLIF(u.username, ''), u.first_name) AS display_name
+        FROM confirmed_progress cp
+        JOIN users u ON u.user_id = cp.user_id
+        WHERE cp.date = $1
+        ORDER BY cp.confirmed_done DESC
+        LIMIT $2
+        """,
+        target_date, limit
+    )
+    await conn.close()
+
+    results = []
+    for r in rows:
+        results.append({
+            "user_id": r["user_id"],
+            "display_name": r["display_name"] or "someone",
+            "confirmed_done": r["confirmed_done"],
+            "streak": await get_streak(r["user_id"]),
+        })
+    return results

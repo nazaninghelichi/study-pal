@@ -42,7 +42,7 @@ def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None =
         f"  Current streak: {streak} day{'s' if streak != 1 else ''}\n\n"
     )
     if gift_url:
-        body += f"🎁 Pick a sticker for {name}: {gift_url}\n\n"
+        body += f"✅ Confirm today's count and pick a sticker for {name}: {gift_url}\n\n"
     body += f"You're getting this because {name} added you as their accountability buddy."
 
     if not SMTP_HOST:

@@ -3,22 +3,23 @@
 {% block content %}
 <div class="card">
   <h1>🏆 Leaderboard</h1>
+  <p class="muted">Buddy-confirmed results for {{ board_date }} — only students with an accountability buddy who confirmed that day show up here.</p>
   <p class="muted">❤️ You have {{ hearts_balance }} heart{{ 's' if hearts_balance != 1 else '' }} to send</p>
   {% if not rows %}
-  <p class="muted">Every cat's asleep so far — be the first to log one.</p>
+  <p class="muted">No confirmed results for {{ board_date }} yet — ask your accountability buddy to confirm your count in Settings.</p>
   {% else %}
   <div class="table-wrap">
     <table class="lb-table">
       <thead>
-        <tr><th>Global</th><th>User</th><th>Streaks</th><th>Total problems</th><th>Send</th></tr>
+        <tr><th>Global</th><th>User</th><th>Confirmed</th><th>Streak</th><th>Send</th></tr>
       </thead>
       <tbody>
         {% for row in rows %}
         <tr class="{% if row.user_id == my_user_id %}me{% endif %}">
           <td>{{ loop.index }}</td>
           <td>🐱 {{ row.display_name }}</td>
+          <td>{{ row.confirmed_done }}</td>
           <td>{{ row.streak }}</td>
-          <td>{{ row.total }}</td>
           <td>
             {% if row.user_id != my_user_id and hearts_balance > 0 %}
             <form method="post" action="{{ url_for('hearts_send_route') }}" class="send-hearts-form">

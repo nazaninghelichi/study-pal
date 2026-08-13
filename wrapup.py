@@ -109,9 +109,9 @@ Tone: cold, direct, tactical. No fluff. Tips should be concrete and realistic.
         f"Ladies and gentlemen,\n"
         f"{top_name} crushed it with {top_count}/{top_goal}. You’re a beast.\n"
         f"{least_name} logged {least_count}/{least_goal}. Even your inbox feels sorry.\n"
-        "\ud83d\udd34 0–33%: Apply before 11AM and avoid multitasking. Use a timer.\n"
-        "\ud83d\udd36 34–67%: Write down tomorrow’s goal before bed. Prime your brain.\n"
-        "\ud83d\udd35 67–100%: Message one hiring manager today with a tailored note.\n"
+        "🔴 0–33%: Apply before 11AM and avoid multitasking. Use a timer.\n"
+        "🔶 34–67%: Write down tomorrow’s goal before bed. Prime your brain.\n"
+        "🔵 67–100%: Message one hiring manager today with a tailored note.\n"
         "One percent better tomorrow."
     )
 

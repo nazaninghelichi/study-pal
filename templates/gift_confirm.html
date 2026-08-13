@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Confirm today's count — Mathoclock{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1>✅ Confirm {{ name }}'s count</h1>
+  <p class="muted">{{ name }} reported <strong>{{ reported_done }}</strong> problem{{ 's' if reported_done != 1 else '' }} done on {{ report_date }}. Adjust the number if it's not right, then confirm — this is what counts toward the leaderboard.</p>
+  <form method="post" action="{{ url_for('gift_confirm_route', token=token) }}">
+    <label for="confirmed_done">Confirmed count</label>
+    <input type="number" id="confirmed_done" name="confirmed_done" min="0" value="{{ reported_done }}" required>
+    <button type="submit" class="primary">Confirm</button>
+  </form>
+</div>
+{% endblock %}
