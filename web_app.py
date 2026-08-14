@@ -162,7 +162,7 @@ def admin_add_email_route():
         flash("That doesn't look like a valid email address.")
         return redirect(url_for("admin_route"))
     password = run_async(add_approved_email(email))
-    flash(f"Approved {email} — temporary password: {password} (copy this now, it won't be shown again)")
+    flash(f"Approved {email}. Temporary password: {password} (copy this now, it won't be shown again)")
     return redirect(url_for("admin_route"))
 
 
@@ -191,7 +191,7 @@ def admin_reset_password_route():
 def admin_unlock_buddy_route():
     user_id = int(request.form.get("user_id"))
     run_async(unlock_buddy(user_id))
-    flash("Buddy unlocked — the student can submit a new one.")
+    flash("Buddy unlocked. The student can submit a new one.")
     return redirect(url_for("admin_route"))
 
 
@@ -402,7 +402,7 @@ def hearts_send_route():
         recipient_id = int(request.form.get("recipient_id", ""))
         amount = int(request.form.get("amount", 0))
     except ValueError:
-        flash("That didn't work — try again.")
+        flash("That didn't work, try again.")
         return redirect(url_for("leaderboard_route"))
 
     if amount <= 0:
@@ -410,7 +410,7 @@ def hearts_send_route():
     elif run_async(transfer_hearts(sender_id, recipient_id, amount)):
         flash(f"Sent {amount} heart{'s' if amount != 1 else ''}! ❤️")
     else:
-        flash("Couldn't send — check your balance.")
+        flash("Couldn't send, check your balance.")
     return redirect(url_for("leaderboard_route"))
 
 
@@ -476,9 +476,9 @@ def streak_repair_route():
 
     if run_async(spend_hearts(user_id, STREAK_REPAIR_COST)):
         run_async(save_streak_date(user_id, repairable_date))
-        flash(f"Streak repaired — {repairable_date} now counts. 💔➡️❤️")
+        flash(f"Streak repaired. {repairable_date} now counts. 💔➡️❤️")
     else:
-        flash(f"Not enough hearts — repairing costs {STREAK_REPAIR_COST}.")
+        flash(f"Not enough hearts, repairing costs {STREAK_REPAIR_COST}.")
     return redirect(url_for("progress_route"))
 
 
@@ -548,7 +548,7 @@ def settings_buddy_route():
     current = run_async(get_buddy_status(user_id))
 
     if current["status"] == "verified":
-        flash("Your buddy is verified and locked — contact Mathoclock to change it.")
+        flash("Your buddy is verified and locked. Contact Mathoclock to change it.")
         return redirect(url_for("settings_route"))
 
     if not email:
@@ -561,18 +561,18 @@ def settings_buddy_route():
         return redirect(url_for("settings_route"))
 
     if email.lower() == own_email:
-        flash("Your accountability buddy can't be your own email — pick someone who'll actually check on you.")
+        flash("Your accountability buddy can't be your own email. Pick someone who'll actually check on you.")
         return redirect(url_for("settings_route"))
 
     token = run_async(submit_buddy_email(user_id, email))
     if not token:
-        flash("Your buddy is verified and locked — contact Mathoclock to change it.")
+        flash("Your buddy is verified and locked. Contact Mathoclock to change it.")
         return redirect(url_for("settings_route"))
 
     name = run_async(_get_display_name(user_id))
     confirm_url = f"{PUBLIC_BASE_URL}/buddy/verify/{token}"
     send_buddy_verification(email, name, confirm_url)
-    flash(f"Verification email sent to {email} — nothing counts until they confirm.")
+    flash(f"Verification email sent to {email}. Nothing counts until they confirm.")
     return redirect(url_for("settings_route"))
 
 

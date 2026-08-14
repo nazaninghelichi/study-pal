@@ -61,9 +61,9 @@ def send_buddy_verification(buddy_email: str, student_name: str, confirm_url: st
         f"Hi,\n\n"
         f"{student_name} added you as their accountability buddy on Mathoclock. "
         f"That means once a day you'll get a short email with what they studied, "
-        f"and you confirm the number — that's what makes it count.\n\n"
+        f"and you confirm the number, that's what makes it count.\n\n"
         f"If you're on board, confirm here (takes a few seconds):\n{confirm_url}\n\n"
-        f"If you don't know why you're getting this, you can just ignore it — nothing "
+        f"If you don't know why you're getting this, you can just ignore it. Nothing "
         f"happens unless you confirm."
     )
     return _send(buddy_email, f"{student_name} added you as their accountability buddy", body, "buddy verification")

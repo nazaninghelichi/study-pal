@@ -5,7 +5,7 @@
 <div class="card">
   {% if state %}
     <div class="pomo-phase-label">{{ '🎯 Focus' if state.phase == 'focus' else '☕ Break' }}</div>
-    <div class="pomo-paused-badge" id="pomo-paused-badge" hidden>⏸ Paused — come back to keep going</div>
+    <div class="pomo-paused-badge" id="pomo-paused-badge" hidden>⏸ Paused, come back to keep going</div>
     <div class="digital-clock">
       <div class="readout" id="pomo-readout">--:--</div>
       <div class="dc-label">{{ state.duration_minutes }} min {{ state.phase }}</div>
@@ -16,7 +16,7 @@
       <img id="growcat" class="growcat" src="{{ url_for('static', filename='happycat.png') }}" alt="A very happy cat"
            style="animation-duration: {{ state.duration_minutes * 60 }}s; animation-delay: -{{ state.elapsed_seconds | round(0, 'floor') | int }}s;">
     </div>
-    <p class="muted" style="text-align:center;">Stick with it — finishing the full session bursts into hearts you can catch.</p>
+    <p class="muted" style="text-align:center;">Stick with it. Finishing the full session bursts into hearts you can catch.</p>
     {% else %}
     <p class="muted" style="text-align:center;">Rest up. Back to focus when you're ready.</p>
     {% endif %}
@@ -27,7 +27,7 @@
     </form>
   {% else %}
     <div class="pomo-phase-label">🎯 Ready to focus?</div>
-    <p class="muted">{{ focus_minutes }} minutes of focus. Finish the whole session and catch the hearts it bursts into — spend them on repairing a streak or sending to a friend. Ask your accountability buddy for cat stickers in your nightly report — check your <a href="{{ url_for('collection_route') }}">collection</a>.</p>
+    <p class="muted">{{ focus_minutes }} minutes of focus. Finish the whole session and catch the hearts it bursts into, then spend them on repairing a streak or sending to a friend. Ask your accountability buddy for cat stickers in your nightly report, check your <a href="{{ url_for('collection_route') }}">collection</a>.</p>
     <form method="post" action="{{ url_for('pomewdoro_start_route') }}" class="pomo-actions">
       <button type="submit" class="primary">Start Focus Session</button>
     </form>

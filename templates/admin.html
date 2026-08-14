@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card">
   <h1>🔐 Approved students</h1>
-  <p class="muted">Add a student's email and they get a temporary password shown once right here — share it with them yourself, then they can change it after signing in.</p>
+  <p class="muted">Add a student's email and they get a temporary password shown once right here. Share it with them yourself, then they can change it after signing in.</p>
 
   <form method="post" action="{{ url_for('admin_add_email_route') }}" style="margin-bottom: 1.2rem;">
     <label for="email">Student's email</label>
@@ -34,7 +34,7 @@
 
 <div class="card">
   <h1>💌 Verified buddies</h1>
-  <p class="muted">These confirmed themselves by email — read-only, just for your own visibility. Unlock one if a student's buddy needs to change.</p>
+  <p class="muted">These confirmed themselves by email. Read-only, just for your own visibility. Unlock one if a student's buddy needs to change.</p>
   {% if not buddies %}
   <p class="muted">No verified buddies yet.</p>
   {% else %}
