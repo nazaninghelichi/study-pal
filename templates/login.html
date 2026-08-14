@@ -10,12 +10,13 @@
     <button type="submit" class="primary">Send sign-in link</button>
   </form>
 
+  <form method="post" action="{{ url_for('demo') }}" style="margin-top: 1rem;">
+    <button type="submit" class="secondary">🐱 Try the demo — no sign-up needed</button>
+  </form>
+
   {% if dev_mode %}
   <div class="dev-note">
-    <strong>Dev mode</strong> — no SMTP configured, so no real email will send.
-    <form method="post" action="{{ url_for('demo_login') }}" style="margin-top: 0.6rem;">
-      <button type="submit" class="secondary">🐱 Skip email — use demo account</button>
-    </form>
+    <strong>Dev mode</strong> — no SMTP configured, sign-in links print to the console instead of emailing.
   </div>
   {% endif %}
 

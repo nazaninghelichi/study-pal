@@ -38,6 +38,7 @@ from db import (
     spend_hearts,
     transfer_hearts,
 )
+from demo_seed import DEMO_EMAIL, ensure_demo_seeded
 from flavor import clock_snapshot, compute_badges, daily_quip, heatmap_level, progress_flavor
 from mailer import send_magic_link
 
@@ -72,8 +73,8 @@ def login_required(view):
 # ---- auth ----
 
 def _dev_mode() -> bool:
-    """True when no real SMTP is configured — gates the demo-login shortcut
-    so it can never be used to skip auth once real email is wired up."""
+    """True when no real SMTP is configured — used only to show a note that
+    sign-in links are logged to the console instead of emailed."""
     return not bool(os.getenv("SMTP_HOST"))
 
 
@@ -84,15 +85,14 @@ def index():
     return render_template("login.html", dev_mode=_dev_mode())
 
 
-@app.route("/demo-login", methods=["POST"])
-def demo_login():
-    if not _dev_mode():
-        flash("Demo login is disabled once real email is configured.")
-        return redirect(url_for("index"))
-    email = "demo@studypal.local"
-    user_id = run_async(get_or_create_web_user(email))
+@app.route("/demo", methods=["POST"])
+def demo():
+    """Public showcase account — pre-seeded with sample progress so a visitor
+    can see how the app works without signing up or waiting on email."""
+    user_id = run_async(get_or_create_web_user(DEMO_EMAIL))
+    run_async(ensure_demo_seeded(user_id))
     session["user_id"] = user_id
-    session["email"] = email
+    session["email"] = DEMO_EMAIL
     return redirect(url_for("dashboard"))
 
 
