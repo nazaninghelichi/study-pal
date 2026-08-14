@@ -12,24 +12,32 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 EMAIL_FROM = os.getenv("EMAIL_FROM", SMTP_USER or "studypal@localhost")
 
 
-def send_magic_link(email: str, link: str) -> None:
-    """Email a sign-in link. With no SMTP_HOST configured, log it instead (local dev)."""
+def send_magic_link(email: str, link: str) -> bool:
+    """Email a sign-in link. Returns whether it actually sent.
+
+    With no SMTP_HOST configured, logs it instead (local dev) and reports
+    failure so the caller can fall back to showing the link on-page."""
     if not SMTP_HOST:
         logger.warning("[DEV MODE] no SMTP_HOST set — sign-in link for %s: %s", email, link)
-        return
+        return False
 
     msg = MIMEText(f"Tap to sign in to Mathoclock (link expires in 15 minutes):\n\n{link}")
     msg["Subject"] = "Your Mathoclock sign-in link"
     msg["From"] = EMAIL_FROM
     msg["To"] = email
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        server.send_message(msg)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except OSError:
+        logger.exception("Failed to send sign-in link to %s", email)
+        return False
 
 
-def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None = None) -> None:
+def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None = None) -> bool:
     """Nightly accountability-buddy email. Same dev-mode fallback as send_magic_link."""
     name = summary["display_name"]
     goal, done, streak = summary["goal"], summary["done"], summary["streak"]
@@ -47,14 +55,19 @@ def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None =
 
     if not SMTP_HOST:
         logger.warning("[DEV MODE] no SMTP_HOST set — progress report for %s to %s:\n%s", name, buddy_email, body)
-        return
+        return False
 
     msg = MIMEText(body)
     msg["Subject"] = f"{name}'s Mathoclock progress today"
     msg["From"] = EMAIL_FROM
     msg["To"] = buddy_email
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        server.send_message(msg)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except OSError:
+        logger.exception("Failed to send progress report to %s", buddy_email)
+        return False
