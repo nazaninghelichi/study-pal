@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Admin — Mathoclock{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>🔐 Admin</h1>
+  <form method="post" action="{{ url_for('admin_login_route') }}">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required autofocus>
+    <button type="submit" class="primary">Log in</button>
+  </form>
+</div>
+{% endblock %}

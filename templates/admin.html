@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Admin — Mathoclock{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>🔐 Approved students</h1>
+  <p class="muted">Only these emails can request a sign-in link. Add a student's email here before telling them to log in.</p>
+
+  <form method="post" action="{{ url_for('admin_add_email_route') }}" style="margin-bottom: 1.2rem;">
+    <label for="email">Student's email</label>
+    <input type="email" id="email" name="email" placeholder="student@example.com" required autofocus>
+    <button type="submit" class="primary">Approve</button>
+  </form>
+
+  {% if not emails %}
+  <p class="muted">No approved emails yet.</p>
+  {% else %}
+  {% for email in emails %}
+  <div class="settings-row">
+    <div class="label">{{ email }}</div>
+    <form method="post" action="{{ url_for('admin_remove_email_route') }}">
+      <input type="hidden" name="email" value="{{ email }}">
+      <button type="submit" class="secondary">Remove</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<div class="logout-row">
+  <a href="{{ url_for('admin_logout_route') }}">Log out of admin</a>
+</div>
+{% endblock %}

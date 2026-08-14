@@ -10,6 +10,7 @@ import requests
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 
 from db import (
+    add_approved_email,
     add_cats,
     add_hearts,
     consume_gift_token,
@@ -31,6 +32,9 @@ from db import (
     get_repairable_date,
     get_streak,
     init_db_pg,
+    is_email_approved,
+    list_approved_emails,
+    remove_approved_email,
     save_confirmed_progress,
     save_streak_date,
     set_buddy_email,
@@ -55,6 +59,7 @@ app.secret_key = SECRET_KEY
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:5000").rstrip("/")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 
 def run_async(coro):
@@ -66,6 +71,15 @@ def login_required(view):
     def wrapped(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("index"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_route"))
         return view(*args, **kwargs)
     return wrapped
 
@@ -103,12 +117,61 @@ def login():
         flash("That doesn't look like a valid email address.")
         return redirect(url_for("index"))
 
+    if not run_async(is_email_approved(email)):
+        flash("That email isn't registered yet — contact Mathoclock to get access.")
+        return redirect(url_for("index"))
+
     token = run_async(create_magic_link(email))
     link = f"{PUBLIC_BASE_URL}/auth/verify?token={token}"
-    send_magic_link(email, link)
+    sent = send_magic_link(email, link)
 
-    dev_link = link if not os.getenv("SMTP_HOST") else None
+    dev_link = None if sent else link
     return render_template("check_email.html", email=email, dev_link=dev_link)
+
+
+# ---- admin ----
+
+@app.route("/admin", methods=["GET"])
+def admin_route():
+    if not session.get("is_admin"):
+        return render_template("admin_login.html")
+    emails = run_async(list_approved_emails())
+    return render_template("admin.html", emails=emails)
+
+
+@app.route("/admin/login", methods=["POST"])
+def admin_login_route():
+    password = request.form.get("password", "")
+    if not ADMIN_PASSWORD or password != ADMIN_PASSWORD:
+        flash("Wrong password.")
+        return redirect(url_for("admin_route"))
+    session["is_admin"] = True
+    return redirect(url_for("admin_route"))
+
+
+@app.route("/admin/logout")
+def admin_logout_route():
+    session.pop("is_admin", None)
+    return redirect(url_for("admin_route"))
+
+
+@app.route("/admin/approved-emails/add", methods=["POST"])
+@admin_required
+def admin_add_email_route():
+    email = request.form.get("email", "").strip().lower()
+    if EMAIL_RE.match(email):
+        run_async(add_approved_email(email))
+    else:
+        flash("That doesn't look like a valid email address.")
+    return redirect(url_for("admin_route"))
+
+
+@app.route("/admin/approved-emails/remove", methods=["POST"])
+@admin_required
+def admin_remove_email_route():
+    email = request.form.get("email", "").strip().lower()
+    run_async(remove_approved_email(email))
+    return redirect(url_for("admin_route"))
 
 
 @app.route("/auth/verify")

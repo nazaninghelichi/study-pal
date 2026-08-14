@@ -109,6 +109,16 @@ async def init_db_pg():
         """
     )
 
+    # Create approved_emails table (allowlist gating who can request a sign-in link)
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS approved_emails (
+          email      TEXT PRIMARY KEY,
+          added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+
     # Create magic_links table (single-use, expiring email sign-in tokens)
     await conn.execute(
         """
@@ -264,6 +274,34 @@ async def get_or_create_web_user(email: str) -> int:
         )
     await conn.close()
     return -web_id
+
+async def is_email_approved(email: str) -> bool:
+    conn = await get_pg_conn()
+    row = await conn.fetchval("SELECT 1 FROM approved_emails WHERE email = $1", email)
+    await conn.close()
+    return bool(row)
+
+
+async def add_approved_email(email: str) -> None:
+    conn = await get_pg_conn()
+    await conn.execute(
+        "INSERT INTO approved_emails (email) VALUES ($1) ON CONFLICT DO NOTHING", email
+    )
+    await conn.close()
+
+
+async def remove_approved_email(email: str) -> None:
+    conn = await get_pg_conn()
+    await conn.execute("DELETE FROM approved_emails WHERE email = $1", email)
+    await conn.close()
+
+
+async def list_approved_emails() -> list[str]:
+    conn = await get_pg_conn()
+    rows = await conn.fetch("SELECT email FROM approved_emails ORDER BY added_at DESC")
+    await conn.close()
+    return [r["email"] for r in rows]
+
 
 async def save_wrapup_log(content: str, date_, user_id=None):
     conn = await get_pg_conn()
