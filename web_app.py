@@ -203,7 +203,7 @@ def logout():
 
 @app.route("/about")
 def about_route():
-    return render_template("about.html")
+    return render_template("about.html", streak_repair_cost=STREAK_REPAIR_COST)
 
 
 # ---- data helpers (mirror the Telegram bot's goal_command.py / leaderboard_command.py logic) ----
