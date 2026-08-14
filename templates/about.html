@@ -12,24 +12,28 @@
 </div>
 
 <div class="card">
-  <h2>🧮 What it does</h2>
-  <p>You set a daily goal — how many practice problems you're doing today — and log each one as you finish it. It tracks your streak, ranks you on a leaderboard, and reminds you if the number hasn't moved.</p>
+  <h2>What this is</h2>
+  <p>I built this for my own tutoring students — the ones who understand the material fine in our sessions, then disappear between them. This isn't about teaching you math. It's about making it obvious, to you and to someone who cares, whether you actually did the practice today or just meant to.</p>
+  <p>Set how many problems you're doing today, log each one as you finish it, and the app keeps a streak going for as long as you show up. When you stall, it says so.</p>
 </div>
 
 <div class="card">
-  <h2>How it works</h2>
-  <div class="loop">
-    <div class="loop-step"><span class="n">01</span>Set a daily goal</div>
-    <div class="loop-step"><span class="n">02</span>Log problems as you go</div>
-    <div class="loop-step"><span class="n">03</span>Watch the streak build</div>
-    <div class="loop-step"><span class="n">04</span>Get reminded if you stall</div>
-    <div class="loop-step"><span class="n">05</span>Check the leaderboard</div>
+  <h2>How to use it</h2>
+  <div class="timeline">
+    <div class="tl-item"><span class="tl-date">1</span><span class="tl-text">Get added. I add your email so you can sign in with just that — no password, and access is invite-only for students I'm actually working with.</span></div>
+    <div class="tl-item"><span class="tl-date">2</span><span class="tl-text">Set today's goal. How many problems, updateable anytime from Settings.</span></div>
+    <div class="tl-item"><span class="tl-date">3</span><span class="tl-text">Log as you go. Every problem you finish, tap it in — the count and streak update right away.</span></div>
+    <div class="tl-item"><span class="tl-date">4</span><span class="tl-text">Run a focus session. Open Pomewdoro, pick a length, and study while a cat slowly grows on screen. Finish the session and it bursts into hearts you tap to collect.</span></div>
+    <div class="tl-item"><span class="tl-date">5</span><span class="tl-text">Spend your hearts. Repair a broken streak with them, or send some to a friend who's having a rough week.</span></div>
+    <div class="tl-item"><span class="tl-date">6</span><span class="tl-text">Add an accountability buddy in Settings — a parent, a friend, whoever will actually check on you. Every night at 8, they get your numbers by email.</span></div>
+    <div class="tl-item"><span class="tl-date">7</span><span class="tl-text">Your buddy confirms your count and can send you a sticker for it. It lands straight in your collection.</span></div>
+    <div class="tl-item"><span class="tl-date">8</span><span class="tl-text">Check the leaderboard. It only shows students whose buddy confirmed the day before — no confirmation, no ranking, so nobody can just type in a big number.</span></div>
   </div>
 </div>
 
 <div class="card">
-  <h2>Two surfaces, one account</h2>
-  <p>Same Postgres database underneath both — your goal and streak carry over no matter which one you open.</p>
+  <h2>Two ways in, one account</h2>
+  <p>Telegram bot or the website — same account underneath, same Postgres database. Log a problem on your phone during a break, check your streak on a laptop later. It's all just there.</p>
   <div class="surfaces">
     <div class="surface-box">📱 Telegram bot</div>
     <span class="surface-arrow">↕</span>
@@ -40,10 +44,11 @@
 </div>
 
 <div class="card">
-  <h2>😺 The cat has moods</h2>
-  <p>A running mood indicator, tied to how today's goal is going:</p>
+  <h2>😺 The cat's mood is basically a status report</h2>
+  <p>It changes with how today is actually going, not with anything you tell it:</p>
   <div class="mood-row">
-    <div class="mood"><span class="emoji">😴</span><span class="label">Nothing logged</span></div>
+    <div class="mood"><span class="emoji">😴</span><span class="label">Nothing logged yet</span></div>
+    <div class="mood"><span class="emoji">😿</span><span class="label">Nothing logged, getting late</span></div>
     <div class="mood"><span class="emoji">🐈</span><span class="label">Chipping away</span></div>
     <div class="mood"><span class="emoji">😻</span><span class="label">Goal crushed</span></div>
     <div class="mood"><span class="emoji">🙀</span><span class="label">Overachiever</span></div>
@@ -51,27 +56,24 @@
 </div>
 
 <div class="card">
-  <h2>Philosophy</h2>
-  <p>Most students don't fall behind because they don't understand the material — they fall behind because they stop showing up. Mathoclock exists to make showing up visible: a goal you committed to, a number that either moved today or didn't, a streak with something real to lose.</p>
-  <div class="stat-callout">
-    <span class="big">25%+</span>
-    <span class="caption">higher day-to-day follow-through observed among Mathoclock tutoring students using a daily accountability tool like this, vs. tracking nothing at all</span>
-  </div>
+  <h2>Why it exists</h2>
+  <p>Most of the students I tutor don't struggle with the material — we sort that out fine in session. What gets people is the space between sessions, when nobody's watching and it's easy to tell yourself you'll catch up tomorrow. This app doesn't study for you. It just refuses to let "I've been working on it" stay vague.</p>
 </div>
 
 <div class="card">
   <h2>🕐 Origin story</h2>
   <div class="timeline">
-    <div class="tl-item"><span class="tl-date">Apr 2025</span><span class="tl-text">Built as <strong>JobPal</strong> — same goal/log/streak/leaderboard mechanics, tracking job applications.</span></div>
-    <div class="tl-item"><span class="tl-date">Apr 2026</span><span class="tl-text">Rebuilt into <strong>Mathoclock</strong> — same engine, repointed at daily math practice.</span></div>
-    <div class="tl-item"><span class="tl-date">Aug 2026</span><span class="tl-text">Added a website, so it works without a phone or the Telegram app.</span></div>
+    <div class="tl-item"><span class="tl-date">Apr 2025</span><span class="tl-text">Built as <strong>JobPal</strong> — same goal/log/streak/leaderboard idea, but for tracking job applications.</span></div>
+    <div class="tl-item"><span class="tl-date">Apr 2026</span><span class="tl-text">Rebuilt as <strong>Mathoclock</strong> — same engine, pointed at daily math practice instead.</span></div>
+    <div class="tl-item"><span class="tl-date">Aug 2026</span><span class="tl-text">Added the website, so it works without a phone or the Telegram app.</span></div>
+    <div class="tl-item"><span class="tl-date">Aug 2026</span><span class="tl-text">Added focus sessions, hearts, buddy-confirmed accountability, and a sticker collection — so a good study day is something you can actually point to.</span></div>
   </div>
 </div>
 
 <div class="card">
   <h2>Made by</h2>
-  <p>Built by <a href="https://github.com/nazaninghelichi" target="_blank" rel="noopener">@nazaninghelichi</a>, also behind <strong>Mathoclock</strong> tutoring.</p>
-  <p class="muted">Feedback, bugs, or cat gif complaints: <a href="mailto:calpal.agent@gmail.com">calpal.agent@gmail.com</a></p>
+  <p>Built by <a href="https://github.com/nazaninghelichi" target="_blank" rel="noopener">@nazaninghelichi</a>, who also runs <strong>Mathoclock</strong> tutoring — this is the tool I actually use with my own students.</p>
+  <p class="muted">Questions, bugs, or a sticker request: <a href="mailto:mathoclockacademy@gmail.com">mathoclockacademy@gmail.com</a></p>
 </div>
 
 {% if not session.get('user_id') %}
