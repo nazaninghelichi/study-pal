@@ -130,7 +130,15 @@ def login():
     link = f"{PUBLIC_BASE_URL}/auth/verify?token={token}"
     sent = send_magic_link(email, link)
 
-    dev_link = None if sent else link
+    if not sent and not _dev_mode():
+        # Real SMTP is configured but the send failed (e.g. network block) —
+        # never print a working sign-in link to whoever's looking at this
+        # page, since it isn't proof they own that inbox.
+        logger.error("Magic-link email failed to send for %s; not exposing the link on-page", email)
+        flash("We're having trouble sending email right now — contact Mathoclock and they'll get you signed in.")
+        return redirect(url_for("index"))
+
+    dev_link = link if _dev_mode() else None
     return render_template("check_email.html", email=email, dev_link=dev_link)
 
 
