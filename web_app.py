@@ -96,29 +96,6 @@ def demo_login():
     return redirect(url_for("dashboard"))
 
 
-@app.route("/debug/net-check")
-def debug_net_check():
-    import socket
-    results = {}
-    results["proxy_env"] = {
-        k: os.environ[k] for k in os.environ
-        if "PROXY" in k.upper() or "PRIVATE" in k.upper()
-    }
-    for host, port in [("8.8.8.8", 587), ("8.8.8.8", 465), ("api.telegram.org", 587)]:
-        try:
-            s = socket.create_connection((host, port), timeout=3)
-            s.close()
-            results[f"raw_connect_{host}_{port}"] = "OK"
-        except Exception as e:
-            results[f"raw_connect_{host}_{port}"] = f"FAILED: {e!r}"
-    try:
-        r = requests.get("https://api.telegram.org", timeout=8)
-        results["requests_lib_https"] = f"OK status={r.status_code}"
-    except Exception as e:
-        results["requests_lib_https"] = f"FAILED: {e!r}"
-    return results
-
-
 @app.route("/login", methods=["POST"])
 def login():
     email = request.form.get("email", "").strip().lower()
