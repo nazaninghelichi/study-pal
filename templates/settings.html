@@ -59,12 +59,30 @@
 
 <div class="card">
   <h2>💌 Accountability buddy</h2>
-  <p class="muted">Add someone's email and they'll get a short nightly report of your progress — goal, done, and streak.</p>
+  {% if buddy.status == 'verified' %}
+  <p class="muted">Your buddy is verified and locked in: <strong>{{ buddy.email }}</strong></p>
+  {% if buddy.note %}
+  <div class="link-code-box">
+    <span class="hint">Their note when they confirmed:</span>
+    <span class="code">"{{ buddy.note }}"</span>
+  </div>
+  {% endif %}
+  <p class="muted">Need to change it? Ask Mathoclock to unlock it.</p>
+  {% elif buddy.status == 'pending' %}
+  <p class="muted">Verification email sent to <strong>{{ buddy.email }}</strong> — nothing counts until they confirm.</p>
+  <form method="post" action="{{ url_for('settings_buddy_route') }}">
+    <label for="buddy_email">Change it before they confirm</label>
+    <input type="email" id="buddy_email" name="buddy_email" value="{{ buddy.email or '' }}" placeholder="parent@example.com">
+    <button type="submit" class="primary">Resend</button>
+  </form>
+  {% else %}
+  <p class="muted">Add someone's email — they'll get an email to confirm before anything starts counting, and once they do it locks in.</p>
   <form method="post" action="{{ url_for('settings_buddy_route') }}">
     <label for="buddy_email">Buddy's email</label>
-    <input type="email" id="buddy_email" name="buddy_email" value="{{ buddy_email or '' }}" placeholder="parent@example.com">
-    <button type="submit" class="primary">Save</button>
+    <input type="email" id="buddy_email" name="buddy_email" placeholder="parent@example.com">
+    <button type="submit" class="primary">Send verification</button>
   </form>
+  {% endif %}
 </div>
 
 <div class="logout-row">

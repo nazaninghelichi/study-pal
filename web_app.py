@@ -13,12 +13,15 @@ from db import (
     add_approved_email,
     add_cats,
     add_hearts,
+    clear_buddy_email,
+    confirm_buddy,
     consume_gift_token,
     consume_link_code,
     consume_magic_link,
     create_link_code,
     create_magic_link,
-    get_buddy_email,
+    get_buddy_status,
+    get_buddy_verification,
     get_collection,
     get_confirmed_leaderboard,
     get_confirmed_progress,
@@ -34,17 +37,19 @@ from db import (
     init_db_pg,
     is_email_approved,
     list_approved_emails,
+    list_verified_buddies,
     remove_approved_email,
     save_confirmed_progress,
     save_streak_date,
-    set_buddy_email,
     set_reminders_enabled,
     spend_hearts,
+    submit_buddy_email,
     transfer_hearts,
+    unlock_buddy,
 )
 from demo_seed import DEMO_EMAIL, ensure_demo_seeded
 from flavor import clock_snapshot, compute_badges, daily_quip, heatmap_level, progress_flavor
-from mailer import send_magic_link
+from mailer import send_buddy_verification, send_magic_link
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -136,7 +141,8 @@ def admin_route():
     if not session.get("is_admin"):
         return render_template("admin_login.html")
     emails = run_async(list_approved_emails())
-    return render_template("admin.html", emails=emails)
+    buddies = run_async(list_verified_buddies())
+    return render_template("admin.html", emails=emails, buddies=buddies)
 
 
 @app.route("/admin/login", methods=["POST"])
@@ -171,6 +177,15 @@ def admin_add_email_route():
 def admin_remove_email_route():
     email = request.form.get("email", "").strip().lower()
     run_async(remove_approved_email(email))
+    return redirect(url_for("admin_route"))
+
+
+@app.route("/admin/buddies/unlock", methods=["POST"])
+@admin_required
+def admin_unlock_buddy_route():
+    user_id = int(request.form.get("user_id"))
+    run_async(unlock_buddy(user_id))
+    flash("Buddy unlocked — the student can submit a new one.")
     return redirect(url_for("admin_route"))
 
 
@@ -493,7 +508,7 @@ def settings_route():
         email=session.get("email"),
         link_status=run_async(get_link_status(user_id)),
         reminders_enabled=run_async(get_reminders_enabled(user_id)),
-        buddy_email=run_async(get_buddy_email(user_id)),
+        buddy=run_async(get_buddy_status(user_id)),
         link_code=session.pop("pending_link_code", None),
     )
 
@@ -515,16 +530,58 @@ def settings_notifications_route():
 @app.route("/settings/buddy", methods=["POST"])
 @login_required
 def settings_buddy_route():
+    user_id = session["user_id"]
     email = request.form.get("buddy_email", "").strip()
+    own_email = (session.get("email") or "").strip().lower()
+    current = run_async(get_buddy_status(user_id))
+
+    if current["status"] == "verified":
+        flash("Your buddy is verified and locked — contact Mathoclock to change it.")
+        return redirect(url_for("settings_route"))
+
     if not email:
-        run_async(set_buddy_email(session["user_id"], None))
+        run_async(clear_buddy_email(user_id))
         flash("Accountability buddy removed.")
-    elif not EMAIL_RE.match(email):
+        return redirect(url_for("settings_route"))
+
+    if not EMAIL_RE.match(email):
         flash("That doesn't look like a valid email address.")
-    else:
-        run_async(set_buddy_email(session["user_id"], email))
-        flash("Accountability buddy saved — they'll get a nightly progress report.")
+        return redirect(url_for("settings_route"))
+
+    if email.lower() == own_email:
+        flash("Your accountability buddy can't be your own email — pick someone who'll actually check on you.")
+        return redirect(url_for("settings_route"))
+
+    token = run_async(submit_buddy_email(user_id, email))
+    if not token:
+        flash("Your buddy is verified and locked — contact Mathoclock to change it.")
+        return redirect(url_for("settings_route"))
+
+    name = run_async(_get_display_name(user_id))
+    confirm_url = f"{PUBLIC_BASE_URL}/buddy/verify/{token}"
+    send_buddy_verification(email, name, confirm_url)
+    flash(f"Verification email sent to {email} — nothing counts until they confirm.")
     return redirect(url_for("settings_route"))
+
+
+@app.route("/buddy/verify/<token>", methods=["GET"])
+def buddy_verify_route(token):
+    info = run_async(get_buddy_verification(token))
+    if not info or info["expired"]:
+        return render_template("buddy_verify.html", state="expired")
+    if info["confirmed_at"]:
+        return render_template("buddy_verify.html", state="already_confirmed")
+    name = run_async(_get_display_name(info["user_id"]))
+    return render_template("buddy_verify.html", state="pending", student_name=name, token=token)
+
+
+@app.route("/buddy/verify/<token>", methods=["POST"])
+def buddy_verify_submit_route(token):
+    note = request.form.get("note", "").strip()
+    ok = run_async(confirm_buddy(token, note))
+    if not ok:
+        return render_template("buddy_verify.html", state="expired")
+    return render_template("buddy_verify.html", state="confirmed")
 
 
 # ---- Pomewdoro: focus timer that drops a collectible cat every completed minute ----

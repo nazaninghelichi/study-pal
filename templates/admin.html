@@ -26,6 +26,27 @@
   {% endif %}
 </div>
 
+<div class="card">
+  <h1>💌 Verified buddies</h1>
+  <p class="muted">These confirmed themselves by email — read-only, just for your own visibility. Unlock one if a student's buddy needs to change.</p>
+  {% if not buddies %}
+  <p class="muted">No verified buddies yet.</p>
+  {% else %}
+  {% for b in buddies %}
+  <div class="settings-row">
+    <div>
+      <div class="label">{{ b.display_name }} → {{ b.buddy_email }}</div>
+      {% if b.note %}<div class="sublabel">"{{ b.note }}"</div>{% endif %}
+    </div>
+    <form method="post" action="{{ url_for('admin_unlock_buddy_route') }}">
+      <input type="hidden" name="user_id" value="{{ b.user_id }}">
+      <button type="submit" class="secondary">Unlock</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
 <div class="logout-row">
   <a href="{{ url_for('admin_logout_route') }}">Log out of admin</a>
 </div>

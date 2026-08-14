@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Confirm accountability buddy — Mathoclock{% endblock %}
+{% block content %}
+
+<div class="card">
+  {% if state == 'pending' %}
+  <h1>👋 You've been asked to be an accountability buddy</h1>
+  <p class="muted">{{ student_name }} added you on Mathoclock. Once a day you'll get a short email with what they studied, and you're the one who confirms the number — that's what actually makes it count toward their streak and leaderboard.</p>
+  <form method="post" action="{{ url_for('buddy_verify_submit_route', token=token) }}">
+    <label for="note">Quick note (so {{ student_name }} knows it's really you)</label>
+    <input type="text" id="note" name="note" placeholder="e.g. I'm his mom, happy to keep him honest" maxlength="200">
+    <button type="submit" class="primary">Confirm — I'll do this</button>
+  </form>
+
+  {% elif state == 'confirmed' %}
+  <h1>✅ You're all set</h1>
+  <p class="muted">You're now the confirmed accountability buddy. Nightly reports start tonight, and they'll ask you to confirm the count and optionally send a sticker.</p>
+
+  {% elif state == 'already_confirmed' %}
+  <h1>Already confirmed</h1>
+  <p class="muted">This link has already been used — you're already set up as the accountability buddy.</p>
+
+  {% else %}
+  <h1>This link has expired</h1>
+  <p class="muted">Ask the student to add you again from their Settings page and you'll get a fresh link.</p>
+  {% endif %}
+</div>
+{% endblock %}

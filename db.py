@@ -206,6 +206,25 @@ async def init_db_pg():
     # hearts_balance: spendable currency caught during Pomewdoro completion bursts
     await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS hearts_balance INTEGER NOT NULL DEFAULT 0;")
     await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS buddy_email TEXT;")
+    # buddy_status: 'none' | 'pending' (email sent, not yet confirmed) | 'verified' (locked)
+    await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS buddy_status TEXT NOT NULL DEFAULT 'none';")
+    await conn.execute("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS buddy_note TEXT;")
+
+    # buddy_verifications: single-use tokens proving a real buddy clicked the
+    # confirmation email themselves, rather than the student just typing an address
+    await conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS buddy_verifications (
+          token        TEXT PRIMARY KEY,
+          user_id      BIGINT NOT NULL,
+          buddy_email  TEXT NOT NULL,
+          note         TEXT,
+          confirmed_at TIMESTAMP,
+          created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at   TIMESTAMP NOT NULL
+        );
+        """
+    )
 
     # streak_saves: dates a user spent hearts to retroactively count as goal-met,
     # so a broken streak can be repaired instead of resetting to 0
@@ -596,29 +615,147 @@ async def get_saved_dates(user_id: int) -> set[str]:
     return {r["date"] for r in rows}
 
 
-async def get_buddy_email(user_id: int) -> str | None:
+async def get_buddy_status(user_id: int) -> dict:
+    """Current buddy state for one student: email, status ('none'/'pending'/
+    'verified'), and the buddy's own note once they've confirmed."""
     conn = await get_pg_conn()
-    row = await conn.fetchrow("SELECT buddy_email FROM user_preferences WHERE user_id = $1", user_id)
+    row = await conn.fetchrow(
+        "SELECT buddy_email, buddy_status, buddy_note FROM user_preferences WHERE user_id = $1",
+        user_id
+    )
     await conn.close()
-    return row["buddy_email"] if row else None
+    if not row:
+        return {"email": None, "status": "none", "note": None}
+    return {"email": row["buddy_email"], "status": row["buddy_status"], "note": row["buddy_note"]}
 
 
-async def set_buddy_email(user_id: int, email: str | None) -> None:
+async def submit_buddy_email(user_id: int, email: str, hours_valid: int = 72) -> str | None:
+    """Starts verification for a new buddy email. Refuses if the current buddy
+    is already verified (locked) — an admin has to unlock it first. Returns the
+    confirmation token, or None if refused."""
+    conn = await get_pg_conn()
+    row = await conn.fetchrow("SELECT buddy_status FROM user_preferences WHERE user_id = $1", user_id)
+    if row and row["buddy_status"] == "verified":
+        await conn.close()
+        return None
+
+    await conn.execute(
+        "INSERT INTO user_preferences (user_id, buddy_email, buddy_status, buddy_note) "
+        "VALUES ($1, $2, 'pending', NULL) "
+        "ON CONFLICT (user_id) DO UPDATE SET buddy_email = EXCLUDED.buddy_email, "
+        "buddy_status = 'pending', buddy_note = NULL",
+        user_id, email
+    )
+
+    token = secrets.token_urlsafe(24)
+    expires_at = datetime.utcnow() + timedelta(hours=hours_valid)
+    await conn.execute(
+        "INSERT INTO buddy_verifications (token, user_id, buddy_email, expires_at) VALUES ($1, $2, $3, $4)",
+        token, user_id, email, expires_at
+    )
+    await conn.close()
+    return token
+
+
+async def clear_buddy_email(user_id: int) -> None:
+    """Removes a buddy that's still pending (not yet verified/locked)."""
     conn = await get_pg_conn()
     await conn.execute(
-        "INSERT INTO user_preferences (user_id, buddy_email) VALUES ($1, $2) "
-        "ON CONFLICT (user_id) DO UPDATE SET buddy_email = EXCLUDED.buddy_email",
-        user_id, email
+        "UPDATE user_preferences SET buddy_email = NULL, buddy_status = 'none', buddy_note = NULL "
+        "WHERE user_id = $1 AND buddy_status != 'verified'",
+        user_id
     )
     await conn.close()
 
 
-async def get_all_buddy_emails() -> list[tuple[int, str]]:
-    """Every (user_id, buddy_email) pair with a buddy set — works across web and
-    Telegram users alike, since both live in the same user_preferences table."""
+async def get_buddy_verification(token: str) -> dict | None:
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT user_id, buddy_email, confirmed_at, expires_at FROM buddy_verifications WHERE token = $1",
+        token
+    )
+    await conn.close()
+    if not row:
+        return None
+    return {
+        "user_id": row["user_id"],
+        "buddy_email": row["buddy_email"],
+        "confirmed_at": row["confirmed_at"],
+        "expired": datetime.utcnow() > row["expires_at"],
+    }
+
+
+async def confirm_buddy(token: str, note: str) -> bool:
+    """The buddy's own confirmation — locks the buddy email in for that student.
+    Fails if the token is unknown, expired, already used, or stale (the student
+    changed their buddy email again since this link was sent)."""
+    conn = await get_pg_conn()
+    row = await conn.fetchrow(
+        "SELECT user_id, buddy_email, confirmed_at, expires_at FROM buddy_verifications WHERE token = $1",
+        token
+    )
+    if not row or row["confirmed_at"] or datetime.utcnow() > row["expires_at"]:
+        await conn.close()
+        return False
+
+    current = await conn.fetchrow(
+        "SELECT buddy_email FROM user_preferences WHERE user_id = $1", row["user_id"]
+    )
+    if not current or current["buddy_email"] != row["buddy_email"]:
+        await conn.close()
+        return False
+
+    await conn.execute(
+        "UPDATE buddy_verifications SET confirmed_at = CURRENT_TIMESTAMP, note = $1 WHERE token = $2",
+        note, token
+    )
+    await conn.execute(
+        "UPDATE user_preferences SET buddy_status = 'verified', buddy_note = $1 WHERE user_id = $2",
+        note, row["user_id"]
+    )
+    await conn.close()
+    return True
+
+
+async def unlock_buddy(user_id: int) -> None:
+    """Admin action: clears a verified buddy so the student can submit a new one."""
+    conn = await get_pg_conn()
+    await conn.execute(
+        "UPDATE user_preferences SET buddy_email = NULL, buddy_status = 'none', buddy_note = NULL "
+        "WHERE user_id = $1",
+        user_id
+    )
+    await conn.close()
+
+
+async def list_verified_buddies() -> list[dict]:
+    """Read-only roster for the admin page — who's verified, with whose note."""
     conn = await get_pg_conn()
     rows = await conn.fetch(
-        "SELECT user_id, buddy_email FROM user_preferences WHERE buddy_email IS NOT NULL AND buddy_email != ''"
+        """
+        SELECT up.user_id, up.buddy_email, up.buddy_note,
+               COALESCE(NULLIF(u.username, ''), u.first_name) AS display_name
+        FROM user_preferences up
+        JOIN users u ON u.user_id = up.user_id
+        WHERE up.buddy_status = 'verified'
+        ORDER BY display_name
+        """
+    )
+    await conn.close()
+    return [
+        {"user_id": r["user_id"], "display_name": r["display_name"] or "someone",
+         "buddy_email": r["buddy_email"], "note": r["buddy_note"]}
+        for r in rows
+    ]
+
+
+async def get_all_buddy_emails() -> list[tuple[int, str]]:
+    """Every (user_id, buddy_email) pair with a *verified* buddy — works across
+    web and Telegram users alike, since both live in user_preferences. A pending,
+    unconfirmed buddy never receives reports or counts toward anything."""
+    conn = await get_pg_conn()
+    rows = await conn.fetch(
+        "SELECT user_id, buddy_email FROM user_preferences WHERE buddy_status = 'verified'"
     )
     await conn.close()
     return [(r["user_id"], r["buddy_email"]) for r in rows]
