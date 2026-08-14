@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card">
   <h1>🔐 Approved students</h1>
-  <p class="muted">Only these emails can request a sign-in link. Add a student's email here before telling them to log in.</p>
+  <p class="muted">Add a student's email and they get a temporary password shown once right here — share it with them yourself, then they can change it after signing in.</p>
 
   <form method="post" action="{{ url_for('admin_add_email_route') }}" style="margin-bottom: 1.2rem;">
     <label for="email">Student's email</label>
@@ -17,10 +17,16 @@
   {% for email in emails %}
   <div class="settings-row">
     <div class="label">{{ email }}</div>
-    <form method="post" action="{{ url_for('admin_remove_email_route') }}">
-      <input type="hidden" name="email" value="{{ email }}">
-      <button type="submit" class="secondary">Remove</button>
-    </form>
+    <div style="display:flex; gap:0.4rem;">
+      <form method="post" action="{{ url_for('admin_reset_password_route') }}">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="secondary">Reset password</button>
+      </form>
+      <form method="post" action="{{ url_for('admin_remove_email_route') }}">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="secondary">Remove</button>
+      </form>
+    </div>
   </div>
   {% endfor %}
   {% endif %}

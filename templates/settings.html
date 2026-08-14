@@ -30,13 +30,6 @@
   </div>
 
   <div class="settings-row">
-    <div>
-      <div class="label">🔒 Passwordless Auth</div>
-      <div class="sublabel">No password needed — we email a one-click link</div>
-    </div>
-  </div>
-
-  <div class="settings-row">
     <div class="label">🔔 Notifications</div>
     <form method="post" action="{{ url_for('settings_notifications_route') }}">
       <input type="hidden" name="enabled" value="{{ '0' if reminders_enabled else '1' }}">
@@ -54,6 +47,19 @@
     <label for="name">Name</label>
     <input type="text" id="name" name="name" value="{{ name }}" required>
     <button type="submit" class="primary">Save</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>🔒 Password</h2>
+  <form method="post" action="{{ url_for('settings_password_route') }}">
+    <label for="current_password">Current password</label>
+    <input type="password" id="current_password" name="current_password" required>
+    <label for="new_password">New password</label>
+    <input type="password" id="new_password" name="new_password" minlength="6" required>
+    <label for="confirm_password">Confirm new password</label>
+    <input type="password" id="confirm_password" name="confirm_password" minlength="6" required>
+    <button type="submit" class="primary">Update password</button>
   </form>
 </div>
 

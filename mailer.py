@@ -35,12 +35,6 @@ def _send(to: str, subject: str, body: str, dev_label: str) -> bool:
         return False
 
 
-def send_magic_link(email: str, link: str) -> bool:
-    """Email a sign-in link. Returns whether it actually sent."""
-    body = f"Tap to sign in to Mathoclock (link expires in 15 minutes):\n\n{link}"
-    return _send(email, "Your Mathoclock sign-in link", body, "sign-in link")
-
-
 def send_progress_report(buddy_email: str, summary: dict, gift_url: str | None = None) -> bool:
     """Nightly accountability-buddy email."""
     name = summary["display_name"]

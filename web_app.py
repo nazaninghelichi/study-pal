@@ -17,9 +17,7 @@ from db import (
     confirm_buddy,
     consume_gift_token,
     consume_link_code,
-    consume_magic_link,
     create_link_code,
-    create_magic_link,
     get_buddy_status,
     get_buddy_verification,
     get_collection,
@@ -35,21 +33,23 @@ from db import (
     get_repairable_date,
     get_streak,
     init_db_pg,
-    is_email_approved,
     list_approved_emails,
     list_verified_buddies,
     remove_approved_email,
+    reset_approved_email_password,
     save_confirmed_progress,
     save_streak_date,
     set_reminders_enabled,
+    set_user_password,
     spend_hearts,
     submit_buddy_email,
     transfer_hearts,
     unlock_buddy,
+    verify_login_password,
 )
 from demo_seed import DEMO_EMAIL, ensure_demo_seeded
 from flavor import clock_snapshot, compute_badges, daily_quip, heatmap_level, progress_flavor
-from mailer import send_buddy_verification, send_magic_link
+from mailer import send_buddy_verification
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -91,17 +91,11 @@ def admin_required(view):
 
 # ---- auth ----
 
-def _dev_mode() -> bool:
-    """True when no real SMTP is configured — used only to show a note that
-    sign-in links are logged to the console instead of emailed."""
-    return not bool(os.getenv("SMTP_HOST"))
-
-
 @app.route("/")
 def index():
     if "user_id" in session:
         return redirect(url_for("dashboard"))
-    return render_template("login.html", dev_mode=_dev_mode())
+    return render_template("login.html")
 
 
 @app.route("/demo", methods=["POST"])
@@ -118,28 +112,19 @@ def demo():
 @app.route("/login", methods=["POST"])
 def login():
     email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
     if not EMAIL_RE.match(email):
         flash("That doesn't look like a valid email address.")
         return redirect(url_for("index"))
 
-    if not run_async(is_email_approved(email)):
-        flash("That email isn't registered yet — contact Mathoclock to get access.")
+    if not run_async(verify_login_password(email, password)):
+        flash("Wrong email or password.")
         return redirect(url_for("index"))
 
-    token = run_async(create_magic_link(email))
-    link = f"{PUBLIC_BASE_URL}/auth/verify?token={token}"
-    sent = send_magic_link(email, link)
-
-    if not sent and not _dev_mode():
-        # Real SMTP is configured but the send failed (e.g. network block) —
-        # never print a working sign-in link to whoever's looking at this
-        # page, since it isn't proof they own that inbox.
-        logger.error("Magic-link email failed to send for %s; not exposing the link on-page", email)
-        flash("We're having trouble sending email right now — contact Mathoclock and they'll get you signed in.")
-        return redirect(url_for("index"))
-
-    dev_link = link if _dev_mode() else None
-    return render_template("check_email.html", email=email, dev_link=dev_link)
+    user_id = run_async(get_or_create_web_user(email))
+    session["user_id"] = user_id
+    session["email"] = email
+    return redirect(url_for("dashboard"))
 
 
 # ---- admin ----
@@ -173,10 +158,11 @@ def admin_logout_route():
 @admin_required
 def admin_add_email_route():
     email = request.form.get("email", "").strip().lower()
-    if EMAIL_RE.match(email):
-        run_async(add_approved_email(email))
-    else:
+    if not EMAIL_RE.match(email):
         flash("That doesn't look like a valid email address.")
+        return redirect(url_for("admin_route"))
+    password = run_async(add_approved_email(email))
+    flash(f"Approved {email} — temporary password: {password} (copy this now, it won't be shown again)")
     return redirect(url_for("admin_route"))
 
 
@@ -188,6 +174,18 @@ def admin_remove_email_route():
     return redirect(url_for("admin_route"))
 
 
+@app.route("/admin/approved-emails/reset-password", methods=["POST"])
+@admin_required
+def admin_reset_password_route():
+    email = request.form.get("email", "").strip().lower()
+    password = run_async(reset_approved_email_password(email))
+    if password:
+        flash(f"New temporary password for {email}: {password} (copy this now, it won't be shown again)")
+    else:
+        flash("That email isn't approved.")
+    return redirect(url_for("admin_route"))
+
+
 @app.route("/admin/buddies/unlock", methods=["POST"])
 @admin_required
 def admin_unlock_buddy_route():
@@ -195,20 +193,6 @@ def admin_unlock_buddy_route():
     run_async(unlock_buddy(user_id))
     flash("Buddy unlocked — the student can submit a new one.")
     return redirect(url_for("admin_route"))
-
-
-@app.route("/auth/verify")
-def verify():
-    token = request.args.get("token", "")
-    email = run_async(consume_magic_link(token))
-    if not email:
-        flash("That link is invalid or has expired — request a new one.")
-        return redirect(url_for("index"))
-
-    user_id = run_async(get_or_create_web_user(email))
-    session["user_id"] = user_id
-    session["email"] = email
-    return redirect(url_for("dashboard"))
 
 
 @app.route("/logout")
@@ -532,6 +516,26 @@ def settings_link_route():
 @login_required
 def settings_notifications_route():
     run_async(set_reminders_enabled(session["user_id"], request.form.get("enabled") == "1"))
+    return redirect(url_for("settings_route"))
+
+
+@app.route("/settings/password", methods=["POST"])
+@login_required
+def settings_password_route():
+    email = session.get("email")
+    current = request.form.get("current_password", "")
+    new = request.form.get("new_password", "")
+    confirm = request.form.get("confirm_password", "")
+
+    if not run_async(verify_login_password(email, current)):
+        flash("Current password is wrong.")
+    elif len(new) < 6:
+        flash("New password needs to be at least 6 characters.")
+    elif new != confirm:
+        flash("New passwords don't match.")
+    else:
+        run_async(set_user_password(email, new))
+        flash("Password updated.")
     return redirect(url_for("settings_route"))
 
 

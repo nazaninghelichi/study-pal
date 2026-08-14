@@ -3,6 +3,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 import asyncpg
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # Load .env for local development (dotenv is optional in production)
 load_dotenv()
@@ -109,28 +110,18 @@ async def init_db_pg():
         """
     )
 
-    # Create approved_emails table (allowlist gating who can request a sign-in link)
+    # Create approved_emails table — allowlist gating who can log in, with a
+    # password (set by admin on approval) instead of an emailed link
     await conn.execute(
         """
         CREATE TABLE IF NOT EXISTS approved_emails (
-          email      TEXT PRIMARY KEY,
-          added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          email         TEXT PRIMARY KEY,
+          password_hash TEXT,
+          added_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
     )
-
-    # Create magic_links table (single-use, expiring email sign-in tokens)
-    await conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS magic_links (
-          token      TEXT PRIMARY KEY,
-          email      TEXT NOT NULL,
-          expires_at TIMESTAMP NOT NULL,
-          used       BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-    )
+    await conn.execute("ALTER TABLE approved_emails ADD COLUMN IF NOT EXISTS password_hash TEXT;")
 
     # account_links: ties one web_user_id to one telegram_user_id (1:1 both directions)
     await conn.execute(
@@ -241,31 +232,11 @@ async def init_db_pg():
     await conn.close()
 
 
-async def create_magic_link(email: str) -> str:
-    """Issue a 15-minute single-use sign-in token for an email address."""
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
-    conn = await get_pg_conn()
-    await conn.execute(
-        "INSERT INTO magic_links (token, email, expires_at) VALUES ($1, $2, $3)",
-        token, email, expires_at
-    )
-    await conn.close()
-    return token
+_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no 0/O/1/l/I
 
 
-async def consume_magic_link(token: str) -> str | None:
-    """Validate and burn a token in one step. Returns the email, or None if invalid/expired/used."""
-    conn = await get_pg_conn()
-    row = await conn.fetchrow(
-        "SELECT email, expires_at, used FROM magic_links WHERE token = $1", token
-    )
-    if not row or row["used"] or row["expires_at"] < datetime.utcnow():
-        await conn.close()
-        return None
-    await conn.execute("UPDATE magic_links SET used = TRUE WHERE token = $1", token)
-    await conn.close()
-    return row["email"]
+def _generate_password(length: int = 10) -> str:
+    return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(length))
 
 
 async def get_or_create_web_user(email: str) -> int:
@@ -294,17 +265,51 @@ async def get_or_create_web_user(email: str) -> int:
     await conn.close()
     return -web_id
 
-async def is_email_approved(email: str) -> bool:
-    conn = await get_pg_conn()
-    row = await conn.fetchval("SELECT 1 FROM approved_emails WHERE email = $1", email)
-    await conn.close()
-    return bool(row)
-
-
-async def add_approved_email(email: str) -> None:
+async def add_approved_email(email: str) -> str:
+    """Approves a student and assigns them a fresh temporary password. The
+    plaintext is only ever returned here, once — never stored or logged."""
+    password = _generate_password()
     conn = await get_pg_conn()
     await conn.execute(
-        "INSERT INTO approved_emails (email) VALUES ($1) ON CONFLICT DO NOTHING", email
+        "INSERT INTO approved_emails (email, password_hash) VALUES ($1, $2) "
+        "ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash",
+        email, generate_password_hash(password)
+    )
+    await conn.close()
+    return password
+
+
+async def reset_approved_email_password(email: str) -> str | None:
+    """Issues a new temporary password for an already-approved email. Returns
+    None if that email isn't approved."""
+    conn = await get_pg_conn()
+    exists = await conn.fetchval("SELECT 1 FROM approved_emails WHERE email = $1", email)
+    if not exists:
+        await conn.close()
+        return None
+    password = _generate_password()
+    await conn.execute(
+        "UPDATE approved_emails SET password_hash = $1 WHERE email = $2",
+        generate_password_hash(password), email
+    )
+    await conn.close()
+    return password
+
+
+async def verify_login_password(email: str, password: str) -> bool:
+    conn = await get_pg_conn()
+    row = await conn.fetchrow("SELECT password_hash FROM approved_emails WHERE email = $1", email)
+    await conn.close()
+    if not row or not row["password_hash"]:
+        return False
+    return check_password_hash(row["password_hash"], password)
+
+
+async def set_user_password(email: str, new_password: str) -> None:
+    conn = await get_pg_conn()
+    await conn.execute(
+        "UPDATE approved_emails SET password_hash = $1 WHERE email = $2",
+        generate_password_hash(new_password), email
     )
     await conn.close()
 
